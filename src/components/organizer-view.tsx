@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Plus, Upload, Trash2 } from 'lucide-react';
+import { Plus, Upload, Trash2, Pencil } from 'lucide-react';
 import FloorPlanCanvas from './floor-plan-canvas';
 import { StallModal } from './stall-modal';
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from './confirmation-dialog';
+import { ManagementModal } from './management-modal';
 
 interface OrganizerViewProps {
   exhibitionData: ExhibitionData;
@@ -26,6 +27,12 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
 
   const [isDeleteVenueConfirmOpen, setDeleteVenueConfirmOpen] = useState(false);
   const [isDeleteFloorConfirmOpen, setDeleteFloorConfirmOpen] = useState(false);
+
+  const [managementModalState, setManagementModalState] = useState<{
+    isOpen: boolean;
+    type: 'venue' | 'floor' | null;
+    mode: 'add' | 'edit' | null;
+  }>({ isOpen: false, type: null, mode: null });
 
   const { toast } = useToast();
 
@@ -53,21 +60,46 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
   const currentVenue = useMemo(() => selectedVenueId ? exhibitionData.venues[selectedVenueId] : null, [selectedVenueId, exhibitionData]);
   const currentFloor = useMemo(() => selectedFloorId && currentVenue ? currentVenue.floors[selectedFloorId] : null, [selectedFloorId, currentVenue]);
 
-  const handleAddVenue = () => {
-    const venueName = window.prompt("Enter new venue name:");
-    if (venueName) {
-      const newVenueId = `venue-${crypto.randomUUID()}`;
-      const newExhibitionData: ExhibitionData = {
-        ...exhibitionData,
-        venues: {
-          ...exhibitionData.venues,
-          [newVenueId]: { name: venueName, floors: {} },
-        },
-      };
-      setExhibitionData(newExhibitionData);
-      setSelectedVenueId(newVenueId);
-      toast({ title: "Venue Added", description: `Venue "${venueName}" has been created.` });
+  const handleSaveManagementItem = (name: string) => {
+    const { type, mode } = managementModalState;
+    if (!type || !mode) return;
+
+    if (type === 'venue') {
+      if (mode === 'add') {
+        const newVenueId = `venue-${crypto.randomUUID()}`;
+        const newExhibitionData: ExhibitionData = {
+          ...exhibitionData,
+          venues: {
+            ...exhibitionData.venues,
+            [newVenueId]: { name, floors: {} },
+          },
+        };
+        setExhibitionData(newExhibitionData);
+        setSelectedVenueId(newVenueId);
+        toast({ title: "Venue Added", description: `Venue "${name}" has been created.` });
+      } else if (mode === 'edit' && selectedVenueId) {
+        const newExhibitionData = { ...exhibitionData };
+        newExhibitionData.venues[selectedVenueId].name = name;
+        setExhibitionData(newExhibitionData);
+        toast({ title: "Venue Updated", description: `Venue name updated to "${name}".` });
+      }
+    } else if (type === 'floor') {
+      if (!selectedVenueId) return;
+      if (mode === 'add') {
+        const newFloorId = `floor-${crypto.randomUUID()}`;
+        const newExhibitionData = { ...exhibitionData };
+        newExhibitionData.venues[selectedVenueId].floors[newFloorId] = { name, stalls: {}, floorPlanUrl: "" };
+        setExhibitionData(newExhibitionData);
+        setSelectedFloorId(newFloorId);
+        toast({ title: "Floor Added", description: `Floor "${name}" has been added.` });
+      } else if (mode === 'edit' && selectedFloorId) {
+        const newExhibitionData = { ...exhibitionData };
+        newExhibitionData.venues[selectedVenueId].floors[selectedFloorId].name = name;
+        setExhibitionData(newExhibitionData);
+        toast({ title: "Floor Updated", description: `Floor name updated to "${name}".` });
+      }
     }
+    setManagementModalState({ isOpen: false, type: null, mode: null });
   };
 
   const handleDeleteVenue = () => {
@@ -77,19 +109,6 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
     setSelectedVenueId(Object.keys(remainingVenues)[0] || null);
     setDeleteVenueConfirmOpen(false);
     toast({ title: "Venue Deleted", description: "The selected venue has been deleted." });
-  };
-  
-  const handleAddFloor = () => {
-    if (!selectedVenueId) return;
-    const floorName = window.prompt("Enter new floor name:");
-    if (floorName) {
-      const newFloorId = `floor-${crypto.randomUUID()}`;
-      const newExhibitionData = { ...exhibitionData };
-      newExhibitionData.venues[selectedVenueId].floors[newFloorId] = { name: floorName, stalls: {}, floorPlanUrl: "" };
-      setExhibitionData(newExhibitionData);
-      setSelectedFloorId(newFloorId);
-      toast({ title: "Floor Added", description: `Floor "${floorName}" has been added.` });
-    }
   };
 
   const handleDeleteFloor = () => {
@@ -163,10 +182,10 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
             <div>
-              <label className="text-sm font-medium">Venue</label>
+              <label htmlFor="venue-select" className="text-sm font-medium">Venue</label>
               <div className="flex gap-2 mt-1">
                 <Select value={selectedVenueId || ""} onValueChange={setSelectedVenueId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="venue-select">
                     <SelectValue placeholder="Select a venue" />
                   </SelectTrigger>
                   <SelectContent>
@@ -175,15 +194,16 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
                     ))}
                   </SelectContent>
                 </Select>
-                 <Button variant="outline" size="icon" onClick={handleAddVenue}><Plus className="h-4 w-4" /></Button>
-                 <Button variant="destructive" size="icon" disabled={!selectedVenueId} onClick={() => setDeleteVenueConfirmOpen(true)}><Trash2 className="h-4 w-4" /></Button>
+                 <Button aria-label="Add Venue" variant="outline" size="icon" onClick={() => setManagementModalState({ isOpen: true, type: 'venue', mode: 'add'})}><Plus className="h-4 w-4" /></Button>
+                 <Button aria-label="Edit Venue" variant="outline" size="icon" disabled={!selectedVenueId} onClick={() => setManagementModalState({ isOpen: true, type: 'venue', mode: 'edit'})}><Pencil className="h-4 w-4" /></Button>
+                 <Button aria-label="Delete Venue" variant="destructive" size="icon" disabled={!selectedVenueId} onClick={() => setDeleteVenueConfirmOpen(true)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">Floor</label>
+              <label htmlFor="floor-select" className="text-sm font-medium">Floor</label>
               <div className="flex gap-2 mt-1">
                 <Select value={selectedFloorId || ""} onValueChange={setSelectedFloorId} disabled={!selectedVenueId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="floor-select">
                     <SelectValue placeholder="Select a floor" />
                   </SelectTrigger>
                   <SelectContent>
@@ -192,16 +212,17 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
                     ))}
                   </SelectContent>
                 </Select>
-                <Button variant="outline" size="icon" onClick={handleAddFloor} disabled={!selectedVenueId}><Plus className="h-4 w-4" /></Button>
-                <Button variant="destructive" size="icon" disabled={!selectedFloorId} onClick={() => setDeleteFloorConfirmOpen(true)}><Trash2 className="h-4 w-4" /></Button>
+                <Button aria-label="Add Floor" variant="outline" size="icon" onClick={() => setManagementModalState({ isOpen: true, type: 'floor', mode: 'add'})} disabled={!selectedVenueId}><Plus className="h-4 w-4" /></Button>
+                <Button aria-label="Edit Floor" variant="outline" size="icon" disabled={!selectedFloorId} onClick={() => setManagementModalState({ isOpen: true, type: 'floor', mode: 'edit'})}><Pencil className="h-4 w-4" /></Button>
+                <Button aria-label="Delete Floor" variant="destructive" size="icon" disabled={!selectedFloorId} onClick={() => setDeleteFloorConfirmOpen(true)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
           </div>
           {selectedFloorId && (
             <div className="pt-4">
-              <label className="text-sm font-medium">Upload Floor Plan</label>
+              <label htmlFor="floor-plan-upload" className="text-sm font-medium">Upload Floor Plan</label>
               <div className="relative mt-1">
-                <Input type="file" accept="image/*" onChange={handleFileUpload} className="pr-12" />
+                <Input id="floor-plan-upload" type="file" accept="image/*" onChange={handleFileUpload} className="pr-12" />
                 <Upload className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               </div>
             </div>
@@ -236,6 +257,22 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
           onSave={handleSaveStall}
           onDelete={handleDeleteStall}
           allStalls={Object.values(currentFloor?.stalls || {})}
+        />
+      )}
+      
+      {managementModalState.isOpen && managementModalState.type && (
+        <ManagementModal
+          isOpen={managementModalState.isOpen}
+          setIsOpen={(isOpen) => setManagementModalState({ ...managementModalState, isOpen })}
+          onSave={handleSaveManagementItem}
+          title={`${managementModalState.mode === 'add' ? 'Add' : 'Edit'} ${managementModalState.type === 'venue' ? 'Venue' : 'Floor'}`}
+          description={`Enter a name for the ${managementModalState.type === 'venue' ? 'venue' : 'floor'}.`}
+          label={`${managementModalState.type === 'venue' ? 'Venue' : 'Floor'} Name`}
+          initialValue={
+            managementModalState.mode === 'edit'
+              ? (managementModalState.type === 'venue' ? currentVenue?.name : currentFloor?.name) || ''
+              : ''
+          }
         />
       )}
 

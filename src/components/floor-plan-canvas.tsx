@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { Stall } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { ImageIcon } from 'lucide-react';
 
 interface FloorPlanCanvasProps {
   floorPlanUrl: string;
@@ -25,6 +26,7 @@ export default function FloorPlanCanvas({
 }: FloorPlanCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  const stallImageRefs = useRef<{[key: string]: HTMLImageElement}>({});
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [drawingRect, setDrawingRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -56,19 +58,37 @@ export default function FloorPlanCanvas({
       const y = (stall.y / 100) * canvas.height;
       const w = (stall.width / 100) * canvas.width;
       const h = (stall.height / 100) * canvas.height;
+      
+      const stallImage = stall.id && stallImageRefs.current[stall.id];
+      if(mode === 'visitor' && stallImage && stallImage.complete) {
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(stallImage, x, y, w, h);
+        ctx.globalAlpha = 1.0;
+        ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
+        ctx.lineWidth = isSelected ? 3 : 2;
+        ctx.strokeRect(x,y,w,h);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = isSelected ? 'hsla(var(--primary), 0.7)' : 'hsla(var(--secondary-foreground), 0.5)';
+        ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(var(--secondary-foreground))';
+        ctx.lineWidth = isSelected ? 3 : 1.5;
 
-      ctx.fillStyle = isSelected ? 'hsla(var(--primary), 0.7)' : 'hsla(var(--secondary-foreground), 0.5)';
-      ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(var(--secondary-foreground))';
-      ctx.lineWidth = isSelected ? 3 : 1.5;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
 
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = isSelected ? 'hsl(var(--primary-foreground))' : 'hsl(var(--secondary-foreground))';
+        ctx.font = `bold ${Math.min(16, w/3, h/3)}px Inter`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(stall.number || '?', x + w / 2, y + h / 2);
 
-      ctx.fillStyle = isSelected ? 'hsl(var(--primary-foreground))' : 'hsl(var(--secondary-foreground))';
-      ctx.font = `bold ${Math.min(16, w/3, h/3)}px Inter`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(stall.number || '?', x + w / 2, y + h / 2);
+        if (mode === 'organizer' && stall.image) {
+            ctx.fillStyle = 'hsl(var(--accent-foreground))';
+            ctx.font = `bold ${Math.min(12, w/5, h/5)}px Inter`;
+            ctx.fillText('🖼️', x + w - 10, y + 10);
+        }
+      }
     });
 
     if (drawingRect) {
@@ -78,6 +98,22 @@ export default function FloorPlanCanvas({
       ctx.strokeRect(drawingRect.x, drawingRect.y, drawingRect.width, drawingRect.height);
     }
   };
+  
+  const preloadStallImages = () => {
+    stalls.forEach(stall => {
+      if (stall.image && !stallImageRefs.current[stall.id]) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = stall.image;
+        img.onload = () => draw();
+        stallImageRefs.current[stall.id] = img;
+      }
+    })
+  };
+
+  useEffect(() => {
+    preloadStallImages();
+  }, [stalls]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
