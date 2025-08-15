@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, useEffect, useState } from 'react';
@@ -60,7 +61,7 @@ export default function FloorPlanCanvas({
       const h = (stall.height / 100) * canvas.height;
       
       const stallImage = stall.id && stallImageRefs.current[stall.id];
-      if(mode === 'visitor' && stallImage && stallImage.complete) {
+      if(mode === 'visitor' && stallImage && stallImage.complete && stallImage.naturalWidth > 0) {
         ctx.save();
         ctx.globalAlpha = 0.9;
         ctx.drawImage(stallImage, x, y, w, h);
@@ -106,6 +107,7 @@ export default function FloorPlanCanvas({
         img.crossOrigin = "anonymous";
         img.src = stall.image;
         img.onload = () => draw();
+        img.onerror = () => draw();
         stallImageRefs.current[stall.id] = img;
       }
     })
@@ -255,3 +257,4 @@ export default function FloorPlanCanvas({
     </div>
   );
 }
+ 
