@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2 } from 'lucide-react';
 import { ConfirmationDialog } from './confirmation-dialog';
+import Image from 'next/image';
 
 interface StallModalProps {
   isOpen: boolean;
@@ -75,6 +76,17 @@ export function StallModal({ isOpen, setIsOpen, stall, onSave, onDelete, allStal
     }
   }
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditedStall({ ...editedStall, image: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   if (!isOpen || !editedStall) return null;
 
   const isNewStall = !editedStall.id;
@@ -118,9 +130,16 @@ export function StallModal({ isOpen, setIsOpen, stall, onSave, onDelete, allStal
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stall-image" className="text-right">Image URL</Label>
-            <Input id="stall-image" value={editedStall.image || ''} placeholder="https://placehold.co/300x200.png" onChange={(e) => setEditedStall({ ...editedStall, image: e.target.value })} className="col-span-3" />
+            <Label htmlFor="stall-image" className="text-right">Image</Label>
+            <Input id="stall-image" type="file" accept="image/*" onChange={handleImageUpload} className="col-span-3" />
           </div>
+           {editedStall.image && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-start-2 col-span-3 relative aspect-video">
+                <Image src={editedStall.image} alt="Stall preview" layout="fill" objectFit="contain" className="rounded-md" />
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="stall-contact" className="text-right">Contact</Label>
             <Input id="stall-contact" value={editedStall.contact || ''} placeholder="info@example.com" onChange={(e) => setEditedStall({ ...editedStall, contact: e.target.value })} className="col-span-3" />
