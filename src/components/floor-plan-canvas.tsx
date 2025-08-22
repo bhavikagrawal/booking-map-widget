@@ -300,10 +300,10 @@ export default function FloorPlanCanvas({
   }
 
   return (
-    <div ref={containerRef} className={cn("relative w-full h-full bg-muted/50 rounded-lg overflow-hidden border", className)}>
+    <div ref={containerRef} className={cn("relative w-full bg-muted/50 rounded-lg overflow-hidden border", className)}>
        <canvas
         ref={canvasRef}
-        className={cn("w-full h-full", mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '')}
+        className={cn("w-full", mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '')}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -331,3 +331,5 @@ export default function FloorPlanCanvas({
     </div>
   );
 }
+
+    

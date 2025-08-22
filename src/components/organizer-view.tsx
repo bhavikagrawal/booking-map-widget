@@ -98,7 +98,6 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
             onPinDrop={handlePinDrop}
             onStallSelect={handleStallSelect}
             selectedStallId={currentStall?.id}
-            className="aspect-[4/3]"
             isStallModalOpen={isStallModalOpen}
             setIsStallModalOpen={setIsStallModalOpen}
             currentStall={currentStall}
@@ -110,3 +109,5 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
     </div>
   );
 }
+
+    
