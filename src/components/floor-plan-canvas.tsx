@@ -186,7 +186,7 @@ export default function FloorPlanCanvas({
         const targetWidth = isFullscreen ? window.innerWidth : container.clientWidth;
         const targetHeight = isFullscreen ? window.innerHeight : container.clientHeight;
 
-        if (isFullscreen) {
+        if (fitToContainer) {
             const scaleX = targetWidth / imageRef.current.naturalWidth;
             const scaleY = targetHeight / imageRef.current.naturalHeight;
             scale = Math.min(scaleX, scaleY);
@@ -194,9 +194,9 @@ export default function FloorPlanCanvas({
             scale = targetWidth / imageRef.current.naturalWidth;
         }
 
-        const x = isFullscreen ? (targetWidth - imageRef.current.naturalWidth * scale) / 2 : 0;
-        const y = isFullscreen ? (targetHeight - imageRef.current.naturalHeight * scale) / 2 : 0;
-        setTransform({ scale, x, y });
+        const x = (targetWidth - imageRef.current.naturalWidth * scale) / 2;
+        const y = (targetHeight - imageRef.current.naturalHeight * scale) / 2;
+        setTransform({ scale, x: Math.max(0, x), y: Math.max(0, y) });
     } else {
         setTransform({ scale: 1, x: 0, y: 0 });
     }
@@ -221,7 +221,7 @@ export default function FloorPlanCanvas({
       }
     }
     loadImage();
-  }, [floorPlanUrl, isFullscreen]);
+  }, [floorPlanUrl]);
 
   useEffect(() => {
     draw();
@@ -336,6 +336,7 @@ export default function FloorPlanCanvas({
   const handleFullscreenChange = () => {
     const isCurrentlyFullscreen = !!document.fullscreenElement;
     setIsFullscreen(isCurrentlyFullscreen);
+    resetTransform(isCurrentlyFullscreen);
   }
 
   useEffect(() => {
