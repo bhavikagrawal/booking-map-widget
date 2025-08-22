@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, useEffect, useState } from 'react';
@@ -60,7 +61,9 @@ export default function FloorPlanCanvas({
         canvas.height = window.innerHeight;
       } else {
         canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
+        canvas.height = imageRef.current ? 
+          (container.clientWidth / imageRef.current.width) * imageRef.current.height : 
+          container.clientHeight;
       }
     }
   
@@ -131,12 +134,12 @@ export default function FloorPlanCanvas({
     const container = containerRef.current;
     if (!canvas || !container) return;
   
-    const canvasWidth = container.clientWidth;
-    const canvasHeight = container.clientHeight;
+    const canvasWidth = isFullscreen ? window.innerWidth : container.clientWidth;
+    const canvasHeight = isFullscreen ? window.innerHeight : container.clientHeight;
     
     if (imageRef.current) {
       const { width: imgWidth, height: imgHeight } = imageRef.current;
-      const scale = fitToContainer ? Math.min(canvasWidth / imgWidth, canvasHeight / imgHeight) : 1;
+      const scale = canvasWidth / imgWidth;
       const x = (canvasWidth - imgWidth * scale) / 2;
       const y = (canvasHeight - imgHeight * scale) / 2;
       setTransform({ scale, x, y });
@@ -277,13 +280,13 @@ export default function FloorPlanCanvas({
   return (
     <div 
         ref={containerRef} 
-        className={cn("relative w-full aspect-video bg-muted/50 rounded-lg border overflow-hidden flex justify-center items-center", className, {
+        className={cn("relative w-full bg-muted/50 rounded-lg border overflow-hidden flex justify-center items-center", className, {
             "fixed inset-0 z-[100]": isFullscreen,
         })}
     >
        <canvas
         ref={canvasRef}
-        className={cn(mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '', "max-w-full max-h-full")}
+        className={cn(mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '', "max-w-full")}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -311,3 +314,5 @@ export default function FloorPlanCanvas({
     </div>
   );
 }
+
+    
