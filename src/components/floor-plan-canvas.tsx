@@ -133,34 +133,27 @@ export default function FloorPlanCanvas({
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
-  
-    const canvasWidth = isFullscreen ? window.innerWidth : container.clientWidth;
-    const canvasHeight = isFullscreen ? window.innerHeight : container.clientHeight;
-    
-    if (imageRef.current) {
-      const { width: imgWidth, height: imgHeight } = imageRef.current;
-      
-      const containerAspectRatio = canvasWidth / canvasHeight;
-      const imageAspectRatio = imgWidth / imgHeight;
 
-      let scale;
-      if (fitToContainer) {
-          if (imageAspectRatio > containerAspectRatio) {
-              scale = canvasWidth / imgWidth;
-          } else {
-              scale = canvasHeight / imgHeight;
-          }
-      } else {
-          scale = canvasWidth / imgWidth;
-      }
-      
-      const x = (canvasWidth - imgWidth * scale) / 2;
-      const y = (canvasHeight - imgHeight * scale) / 2;
-      setTransform({ scale, x, y });
+    if (imageRef.current) {
+        let scale;
+        const targetWidth = isFullscreen ? window.innerWidth : container.clientWidth;
+        const targetHeight = isFullscreen ? window.innerHeight : container.clientHeight;
+
+        if (isFullscreen || fitToContainer) {
+            const scaleX = targetWidth / imageRef.current.width;
+            const scaleY = targetHeight / imageRef.current.height;
+            scale = Math.min(scaleX, scaleY);
+        } else {
+            scale = targetWidth / imageRef.current.width;
+        }
+
+        const x = (targetWidth - imageRef.current.width * scale) / 2;
+        const y = isFullscreen ? (targetHeight - imageRef.current.height * scale) / 2 : 0;
+        setTransform({ scale, x, y });
     } else {
-      setTransform({ scale: 1, x: 0, y: 0 });
+        setTransform({ scale: 1, x: 0, y: 0 });
     }
-  }
+}
 
   useEffect(() => {
     const loadImage = () => {
@@ -181,7 +174,7 @@ export default function FloorPlanCanvas({
       }
     }
     loadImage();
-  }, [floorPlanUrl, isFullscreen]);
+  }, [floorPlanUrl]);
 
   useEffect(() => {
     draw();
@@ -271,8 +264,10 @@ export default function FloorPlanCanvas({
   };
   
   const handleFullscreenChange = () => {
-    setIsFullscreen(!!document.fullscreenElement);
-    setTimeout(() => resetTransform(!!document.fullscreenElement), 0);
+    const isCurrentlyFullscreen = !!document.fullscreenElement;
+    setIsFullscreen(isCurrentlyFullscreen);
+    // Use a timeout to allow the DOM to update before resetting transform
+    setTimeout(() => resetTransform(isCurrentlyFullscreen), 0);
   }
 
   useEffect(() => {
@@ -294,13 +289,13 @@ export default function FloorPlanCanvas({
   return (
     <div 
         ref={containerRef} 
-        className={cn("relative w-full bg-muted/50 rounded-lg border overflow-hidden flex justify-center items-center", className, {
-            "fixed inset-0 z-[100]": isFullscreen,
+        className={cn("relative w-full bg-muted/50 rounded-lg border overflow-auto flex justify-center items-start", className, {
+            "fixed inset-0 z-[100] !items-center": isFullscreen,
         })}
     >
        <canvas
         ref={canvasRef}
-        className={cn(mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '', "max-w-full")}
+        className={cn(mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '')}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
