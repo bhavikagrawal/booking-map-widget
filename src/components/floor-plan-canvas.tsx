@@ -43,7 +43,6 @@ export default function FloorPlanCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const stallImageRefs = useRef<{ [key: string]: HTMLImageElement }>({});
   
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -66,8 +65,8 @@ export default function FloorPlanCanvas({
       ctx.drawImage(imageRef.current, 0, 0, imageRef.current.width, imageRef.current.height);
     } else {
       ctx.fillStyle = '#f0f0f0';
-      const width = canvas.width / transform.scale;
-      const height = canvas.height / transform.scale;
+      const width = imageRef.current?.width || canvas.width;
+      const height = imageRef.current?.height || canvas.height;
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = '#a0a0a0';
       ctx.font = '16px Inter';
@@ -84,7 +83,6 @@ export default function FloorPlanCanvas({
       const y = (stall.y / 100) * (imageRef.current?.height || canvas.height);
       
       const pinSize = mode === 'visitor' ? PIN_SIZE * 1.5 : PIN_SIZE;
-      const scaledPinSize = pinSize / transform.scale;
 
       const pinColor = isSelected ? 'hsl(var(--primary))' : 'hsl(220 13% 69%)';
       const textColor = 'white';
@@ -92,15 +90,15 @@ export default function FloorPlanCanvas({
       // Draw map pin shape
       ctx.beginPath();
       ctx.moveTo(x, y); // Tip of the pin
-      ctx.bezierCurveTo(x, y - scaledPinSize * 0.7, x - scaledPinSize * 0.5, y - scaledPinSize, x - scaledPinSize * 0.5, y - scaledPinSize);
-      ctx.arc(x, y - scaledPinSize, scaledPinSize * 0.5, Math.PI, 0);
-      ctx.bezierCurveTo(x + scaledPinSize * 0.5, y - scaledPinSize, x, y - scaledPinSize * 0.7, x, y);
+      ctx.bezierCurveTo(x, y - pinSize * 0.7, x - pinSize * 0.5, y - pinSize, x - pinSize * 0.5, y - pinSize);
+      ctx.arc(x, y - pinSize, pinSize * 0.5, Math.PI, 0);
+      ctx.bezierCurveTo(x + pinSize * 0.5, y - pinSize, x, y - pinSize * 0.7, x, y);
       ctx.closePath();
       
       ctx.fillStyle = pinColor;
       if (isSelected && mode === 'visitor') {
           ctx.shadowColor = 'hsl(var(--primary))';
-          ctx.shadowBlur = 20 / transform.scale;
+          ctx.shadowBlur = 20;
       }
       ctx.fill();
       ctx.shadowColor = 'transparent';
@@ -109,15 +107,15 @@ export default function FloorPlanCanvas({
       if (mode === 'organizer') {
         // Draw stall number inside the pin for organizers
         ctx.fillStyle = textColor;
-        ctx.font = `bold ${scaledPinSize * 0.4}px Inter`;
+        ctx.font = `bold ${pinSize * 0.4}px Inter`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(stall.number || '?', x, y - scaledPinSize);
+        ctx.fillText(stall.number || '?', x, y - pinSize);
       } else {
         // Draw a simple circle for visitors
         ctx.fillStyle = 'white';
         ctx.beginPath();
-        ctx.arc(x, y - scaledPinSize, scaledPinSize * 0.25, 0, 2 * Math.PI);
+        ctx.arc(x, y - pinSize, pinSize * 0.25, 0, 2 * Math.PI);
         ctx.fill();
       }
     });
@@ -137,23 +135,6 @@ export default function FloorPlanCanvas({
     const y = (canvasHeight - imgHeight * scale) / 2;
     setTransform({ scale, x, y });
   }
-  
-  const preloadStallImages = () => {
-    stalls.forEach(stall => {
-      if (stall.image && !stallImageRefs.current[stall.id]) {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = stall.image;
-        img.onload = () => draw();
-        img.onerror = () => draw(); // Still draw if image fails
-        stallImageRefs.current[stall.id] = img;
-      }
-    })
-  };
-
-  useEffect(() => {
-    preloadStallImages();
-  }, [stalls]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -176,12 +157,9 @@ export default function FloorPlanCanvas({
       img.crossOrigin = "anonymous";
       img.src = floorPlanUrl;
       img.onload = () => {
-        const parent = canvas.parentElement;
-        if (!parent) return;
-        canvas.width = parent.getBoundingClientRect().width;
-        canvas.height = (canvas.width / img.naturalWidth) * img.naturalHeight;
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
         resetTransform(canvas);
-        draw();
       };
       img.onerror = () => {
         imageRef.current = null;
@@ -192,13 +170,7 @@ export default function FloorPlanCanvas({
     loadImage();
     
     const resizeObserver = new ResizeObserver(() => {
-        const parent = canvas.parentElement;
-        if (!parent) return;
-        canvas.width = parent.getBoundingClientRect().width;
-        if (imageRef.current?.naturalWidth) {
-          canvas.height = (canvas.width / imageRef.current.naturalWidth) * imageRef.current.naturalHeight;
-        }
-        resetTransform(canvas);
+      resetTransform(canvas);
     });
 
     if (canvas.parentElement) {
@@ -233,13 +205,11 @@ export default function FloorPlanCanvas({
       const stallY = (stall.y / 100) * imageHeight;
       
       const pinSize = mode === 'visitor' ? PIN_SIZE * 1.5 : PIN_SIZE;
-      const scaledPinSize = pinSize / transform.scale;
-
-      // Hitbox for the entire pin shape
-      const pinTop = stallY - scaledPinSize * 1.5;
+      
+      const pinTop = stallY - pinSize * 1.5;
       const pinBottom = stallY;
-      const pinLeft = stallX - scaledPinSize * 0.5;
-      const pinRight = stallX + scaledPinSize * 0.5;
+      const pinLeft = stallX - pinSize * 0.5;
+      const pinRight = stallX + pinSize * 0.5;
 
       if (pos.x >= pinLeft && pos.x <= pinRight && pos.y >= pinTop && pos.y <= pinBottom) {
         clickedStall = stall;
@@ -291,10 +261,10 @@ export default function FloorPlanCanvas({
   }
 
   return (
-    <div ref={containerRef} className={cn("relative w-full bg-muted/50 rounded-lg overflow-hidden border", className)}>
+    <div ref={containerRef} className={cn("relative w-full bg-muted/50 rounded-lg border overflow-auto flex justify-center items-center", className)}>
        <canvas
         ref={canvasRef}
-        className={cn("w-full", mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '')}
+        className={cn(mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '')}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -322,3 +292,5 @@ export default function FloorPlanCanvas({
     </div>
   );
 }
+
+    
