@@ -60,11 +60,13 @@ export default function FloorPlanCanvas({
       if (isFullscreen) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+      } else if (imageRef.current) {
+        const containerWidth = container.clientWidth;
+        canvas.width = containerWidth;
+        canvas.height = (containerWidth / imageRef.current.naturalWidth) * imageRef.current.naturalHeight;
       } else {
         canvas.width = container.clientWidth;
-        canvas.height = imageRef.current ? 
-          (container.clientWidth / imageRef.current.width) * imageRef.current.height : 
-          container.clientHeight;
+        canvas.height = container.clientHeight;
       }
     }
   
@@ -75,11 +77,11 @@ export default function FloorPlanCanvas({
     ctx.scale(transform.scale, transform.scale);
     
     if (imageRef.current && imageRef.current.complete) {
-      ctx.drawImage(imageRef.current, 0, 0, imageRef.current.width, imageRef.current.height);
+      ctx.drawImage(imageRef.current, 0, 0, imageRef.current.naturalWidth, imageRef.current.naturalHeight);
     } else {
       ctx.fillStyle = '#f0f0f0';
-      const width = imageRef.current?.width || canvas.width;
-      const height = imageRef.current?.height || canvas.height;
+      const width = imageRef.current?.naturalWidth || canvas.width;
+      const height = imageRef.current?.naturalHeight || canvas.height;
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = '#a0a0a0';
       ctx.font = '16px Inter';
@@ -89,43 +91,56 @@ export default function FloorPlanCanvas({
       ctx.fillText(text, width / 2, height / 2);
     }
   
+    const imageWidth = imageRef.current?.naturalWidth || canvas.width;
+    const imageHeight = imageRef.current?.naturalHeight || canvas.height;
+
     stalls.forEach(stall => {
       const isSelected = stall.id === selectedStallId;
-      const x = (stall.x / 100) * (imageRef.current?.width || canvas.width);
-      const y = (stall.y / 100) * (imageRef.current?.height || canvas.height);
+      const x = (stall.x / 100) * imageWidth;
+      const y = (stall.y / 100) * imageHeight;
       
       const pinSize = PIN_SIZE / transform.scale;
-      const pinColor = isSelected ? 'hsl(var(--primary))' : 'hsl(0 72% 51%)';
+      const headRadius = pinSize / 3;
+      const stemHeight = pinSize;
       
       ctx.save();
-      ctx.translate(x, y);
-
-      // Draw pin
+      ctx.translate(x, y - stemHeight);
+      
+      // Draw stem
       ctx.beginPath();
-      ctx.moveTo(0, 0); // bottom point
-      ctx.bezierCurveTo(-pinSize * 0.1, -pinSize * 0.8, -pinSize * 0.5, -pinSize * 0.9, -pinSize * 0.5, -pinSize * 1.2);
-      ctx.arc(0, -pinSize * 1.2, pinSize * 0.5, Math.PI, 0);
-      ctx.bezierCurveTo(pinSize * 0.5, -pinSize * 0.9, pinSize * 0.1, -pinSize * 0.8, 0, 0);
-      ctx.closePath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, stemHeight);
+      ctx.strokeStyle = 'hsl(0 0% 40%)';
+      ctx.lineWidth = 2 / transform.scale;
+      ctx.stroke();
 
-      ctx.fillStyle = pinColor;
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 1.5 / transform.scale;
+      // Draw head
+      ctx.beginPath();
+      ctx.arc(0, 0, headRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(0 84% 60%)';
+      ctx.fill();
+
+      // Draw highlight on head
+      ctx.beginPath();
+      ctx.arc(-headRadius / 4, -headRadius / 4, headRadius / 4, 0, 2 * Math.PI);
+      ctx.fillStyle = 'hsla(0, 100%, 100%, 0.5)';
+      ctx.fill();
 
       if (isSelected || stall.id === hoveredStall?.id) {
-        ctx.shadowColor = 'hsl(var(--primary))';
-        ctx.shadowBlur = 20 / transform.scale;
+          ctx.beginPath();
+          ctx.arc(0, 0, headRadius + 4/transform.scale, 0, 2 * Math.PI);
+          ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(0 84% 60%)';
+          ctx.lineWidth = 3 / transform.scale;
+          ctx.stroke();
       }
       
-      ctx.fill();
-      ctx.stroke();
       ctx.restore();
     });
 
     if (hoveredStall) {
-      const x = (hoveredStall.x / 100) * (imageRef.current?.width || canvas.width);
-      const y = (hoveredStall.y / 100) * (imageRef.current?.height || canvas.height);
-      const tooltipY = y - (PIN_SIZE / transform.scale) * 2;
+      const x = (hoveredStall.x / 100) * imageWidth;
+      const y = (hoveredStall.y / 100) * imageHeight;
+      const tooltipY = y - (PIN_SIZE / transform.scale) * 1.5;
       
       const lines = [
         `Stall: ${hoveredStall.number}`,
@@ -172,15 +187,15 @@ export default function FloorPlanCanvas({
         const targetHeight = isFullscreen ? window.innerHeight : container.clientHeight;
 
         if (isFullscreen) {
-            const scaleX = targetWidth / imageRef.current.width;
-            const scaleY = targetHeight / imageRef.current.height;
+            const scaleX = targetWidth / imageRef.current.naturalWidth;
+            const scaleY = targetHeight / imageRef.current.naturalHeight;
             scale = Math.min(scaleX, scaleY);
         } else {
-            scale = targetWidth / imageRef.current.width;
+            scale = targetWidth / imageRef.current.naturalWidth;
         }
 
-        const x = (targetWidth - imageRef.current.width * scale) / 2;
-        const y = isFullscreen ? (targetHeight - imageRef.current.height * scale) / 2 : 0;
+        const x = isFullscreen ? (targetWidth - imageRef.current.naturalWidth * scale) / 2 : 0;
+        const y = isFullscreen ? (targetHeight - imageRef.current.naturalHeight * scale) / 2 : 0;
         setTransform({ scale, x, y });
     } else {
         setTransform({ scale: 1, x: 0, y: 0 });
@@ -206,7 +221,7 @@ export default function FloorPlanCanvas({
       }
     }
     loadImage();
-  }, [floorPlanUrl]);
+  }, [floorPlanUrl, isFullscreen]);
 
   useEffect(() => {
     draw();
@@ -228,9 +243,9 @@ export default function FloorPlanCanvas({
   };
 
   const getStallAtPos = (pos: {x: number, y: number}) => {
-    const canvas = canvasRef.current!;
-    const imageWidth = imageRef.current?.width || canvas.width;
-    const imageHeight = imageRef.current?.height || canvas.height;
+    if (!imageRef.current) return null;
+    const imageWidth = imageRef.current.naturalWidth;
+    const imageHeight = imageRef.current.naturalHeight;
     
     let foundStall: Stall | null = null;
     const hitBoxScale = 1.5;
@@ -239,23 +254,23 @@ export default function FloorPlanCanvas({
       const stallX = (stall.x / 100) * imageWidth;
       const stallY = (stall.y / 100) * imageHeight;
       
-      const pinHeadY = stallY - (PIN_SIZE * 1.2 / transform.scale);
+      const pinHeadY = stallY - (PIN_SIZE / transform.scale);
       
       const dx = pos.x - stallX;
       const dy = pos.y - pinHeadY;
-      const radius = (PIN_SIZE * 0.5 / transform.scale) * hitBoxScale;
+      const radius = (PIN_SIZE / 3 / transform.scale) * hitBoxScale;
 
       if (dx * dx + dy * dy < radius * radius) {
         foundStall = stall;
         break;
       }
       
-      const pinBottom = stallY;
-      const pinTop = stallY - (PIN_SIZE * 1.7 / transform.scale); // Full pin height
-      const pinLeft = stallX - (PIN_SIZE * 0.5 / transform.scale) * hitBoxScale;
-      const pinRight = stallX + (PIN_SIZE * 0.5 / transform.scale) * hitBoxScale;
+      const stemBottom = stallY;
+      const stemTop = stallY - (PIN_SIZE / transform.scale); 
+      const stemLeft = stallX - (2 / transform.scale) * hitBoxScale;
+      const stemRight = stallX + (2 / transform.scale) * hitBoxScale;
 
-      if (pos.x >= pinLeft && pos.x <= pinRight && pos.y >= pinTop && pos.y <= pinBottom) {
+      if (pos.x >= stemLeft && pos.x <= stemRight && pos.y >= stemTop && pos.y <= stemBottom) {
         foundStall = stall;
         break;
       }
@@ -270,8 +285,9 @@ export default function FloorPlanCanvas({
     if (clickedStall) {
       onStallSelect?.(clickedStall);
     } else if (mode === 'organizer') {
-      const imageWidth = imageRef.current?.width || canvasRef.current!.width;
-      const imageHeight = imageRef.current?.height || canvasRef.current!.height;
+      if (!imageRef.current) return;
+      const imageWidth = imageRef.current.naturalWidth;
+      const imageHeight = imageRef.current.naturalHeight;
       onPinDrop?.({
         x: (pos.x / imageWidth) * 100,
         y: (pos.y / imageHeight) * 100,
@@ -320,8 +336,6 @@ export default function FloorPlanCanvas({
   const handleFullscreenChange = () => {
     const isCurrentlyFullscreen = !!document.fullscreenElement;
     setIsFullscreen(isCurrentlyFullscreen);
-    // Use a timeout to allow the DOM to update before resetting transform
-    setTimeout(() => resetTransform(isCurrentlyFullscreen), 0);
   }
 
   useEffect(() => {
@@ -343,7 +357,7 @@ export default function FloorPlanCanvas({
   return (
     <div 
         ref={containerRef} 
-        className={cn("relative w-full bg-muted/50 rounded-lg border overflow-hidden flex justify-center items-center", className, {
+        className={cn("relative w-full overflow-auto bg-muted/50 rounded-lg border", className, {
             "fixed inset-0 z-[100]": isFullscreen,
         })}
     >
