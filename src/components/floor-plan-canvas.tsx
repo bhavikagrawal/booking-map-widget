@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { Stall } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { ZoomIn, ZoomOut, Redo, MapPin } from 'lucide-react';
+import { ZoomIn, ZoomOut, RefreshCcw, Expand, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const PIN_SIZE = 32;
@@ -29,6 +29,7 @@ export default function FloorPlanCanvas({
   className
 }: FloorPlanCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const stallImageRefs = useRef<{ [key: string]: HTMLImageElement }>({});
   
@@ -188,7 +189,9 @@ export default function FloorPlanCanvas({
         const parent = canvas.parentElement;
         if (!parent) return;
         canvas.width = parent.getBoundingClientRect().width;
-        canvas.height = (canvas.width / (imageRef.current?.naturalWidth || 16)) * (imageRef.current?.naturalHeight || 9);
+        if (imageRef.current?.naturalWidth) {
+          canvas.height = (canvas.width / imageRef.current.naturalWidth) * imageRef.current.naturalHeight;
+        }
         resetTransform(canvas);
     });
 
@@ -265,9 +268,18 @@ export default function FloorPlanCanvas({
     setLastPanPosition({ x: e.clientX, y: e.clientY });
   };
 
+  const handleFullscreen = () => {
+    if (containerRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        containerRef.current.requestFullscreen();
+      }
+    }
+  }
 
   return (
-    <div className={cn("relative w-full h-full bg-muted/50 rounded-lg overflow-hidden border", className)}>
+    <div ref={containerRef} className={cn("relative w-full h-full bg-muted/50 rounded-lg overflow-hidden border", className)}>
        <canvas
         ref={canvasRef}
         className={cn("w-full h-full", mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '')}
@@ -280,7 +292,8 @@ export default function FloorPlanCanvas({
       <div className="absolute top-2 right-2 flex flex-col gap-2">
         <Button size="icon" variant="outline" className="bg-background/80" onClick={() => handleZoom('in')}><ZoomIn /></Button>
         <Button size="icon" variant="outline" className="bg-background/80" onClick={() => handleZoom('out')}><ZoomOut /></Button>
-        <Button size="icon" variant="outline" className="bg-background/80" onClick={() => canvasRef.current && resetTransform(canvasRef.current)}><Redo /></Button>
+        <Button size="icon" variant="outline" className="bg-background/80" onClick={() => canvasRef.current && resetTransform(canvasRef.current)}><RefreshCcw /></Button>
+        <Button size="icon" variant="outline" className="bg-background/80" onClick={handleFullscreen}><Expand /></Button>
       </div>
     </div>
   );
