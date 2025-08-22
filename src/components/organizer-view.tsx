@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Upload } from 'lucide-react';
 import FloorPlanCanvas from './floor-plan-canvas';
-import { StallModal } from './stall-modal';
 import { useToast } from "@/hooks/use-toast";
 
 interface OrganizerViewProps {
@@ -100,20 +99,14 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
             onStallSelect={handleStallSelect}
             selectedStallId={currentStall?.id}
             className="aspect-[4/3]"
+            isStallModalOpen={isStallModalOpen}
+            setIsStallModalOpen={setIsStallModalOpen}
+            currentStall={currentStall}
+            onSaveStall={handleSaveStall}
+            onDeleteStall={handleDeleteStall}
           />
         </CardContent>
       </Card>
-
-      {currentStall && (
-        <StallModal
-          isOpen={isStallModalOpen}
-          setIsOpen={setIsStallModalOpen}
-          stall={currentStall}
-          onSave={handleSaveStall}
-          onDelete={handleDeleteStall}
-          allStalls={Object.values(exhibitionData.stalls)}
-        />
-      )}
     </div>
   );
 }

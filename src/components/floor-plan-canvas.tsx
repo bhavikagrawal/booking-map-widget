@@ -3,8 +3,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { Stall } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { ZoomIn, ZoomOut, RefreshCcw, Expand, MapPin } from 'lucide-react';
+import { ZoomIn, ZoomOut, RefreshCcw, Expand } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StallModal } from './stall-modal';
 
 const PIN_SIZE = 32;
 const PIN_HITBOX_SIZE = 40;
@@ -17,6 +18,12 @@ interface FloorPlanCanvasProps {
   onPinDrop?: (stall: Omit<Stall, 'id' | 'number' | 'name' | 'category' | 'segment'>) => void;
   selectedStallId?: string | null;
   className?: string;
+  // Props for StallModal, only used in organizer mode
+  isStallModalOpen?: boolean;
+  setIsStallModalOpen?: (isOpen: boolean) => void;
+  currentStall?: Partial<Stall> | null;
+  onSaveStall?: (stall: Stall) => void;
+  onDeleteStall?: (stallId: string) => void;
 }
 
 export default function FloorPlanCanvas({
@@ -26,7 +33,12 @@ export default function FloorPlanCanvas({
   onStallSelect,
   onPinDrop,
   selectedStallId,
-  className
+  className,
+  isStallModalOpen,
+  setIsStallModalOpen,
+  currentStall,
+  onSaveStall,
+  onDeleteStall,
 }: FloorPlanCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -295,6 +307,18 @@ export default function FloorPlanCanvas({
         <Button size="icon" variant="outline" className="bg-background/80" onClick={() => canvasRef.current && resetTransform(canvasRef.current)}><RefreshCcw /></Button>
         <Button size="icon" variant="outline" className="bg-background/80" onClick={handleFullscreen}><Expand /></Button>
       </div>
+      
+      {mode === 'organizer' && currentStall && setIsStallModalOpen && onSaveStall && onDeleteStall && (
+        <StallModal
+          isOpen={!!isStallModalOpen}
+          setIsOpen={setIsStallModalOpen}
+          stall={currentStall}
+          onSave={onSaveStall}
+          onDelete={onDeleteStall}
+          allStalls={stalls}
+          portalContainer={containerRef.current}
+        />
+      )}
     </div>
   );
 }

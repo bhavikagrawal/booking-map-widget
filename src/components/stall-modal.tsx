@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
+  DialogPortal,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,12 +26,13 @@ interface StallModalProps {
   onSave: (stall: Stall) => void;
   onDelete: (stallId: string) => void;
   allStalls: Stall[];
+  portalContainer?: HTMLElement | null;
 }
 
 const STALL_CATEGORIES = ["Food", "Jewelry", "Electronics", "Art", "Apparel", "Services", "Other"];
 const STALL_SEGMENTS = ["Basic", "Luxury", "Combo", "Premium"];
 
-export function StallModal({ isOpen, setIsOpen, stall, onSave, onDelete, allStalls }: StallModalProps) {
+export function StallModal({ isOpen, setIsOpen, stall, onSave, onDelete, allStalls, portalContainer }: StallModalProps) {
   const [editedStall, setEditedStall] = useState<Partial<Stall> | null>(stall);
   const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,72 +94,74 @@ export function StallModal({ isOpen, setIsOpen, stall, onSave, onDelete, allStal
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{isNewStall ? 'Add New Stall' : `Edit Stall ${editedStall.number}`}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stall-number" className="text-right">Number</Label>
-            <Input id="stall-number" value={editedStall.number || ''} onChange={(e) => setEditedStall({ ...editedStall, number: e.target.value })} className="col-span-3" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stall-name" className="text-right">Name</Label>
-            <Input id="stall-name" value={editedStall.name || ''} onChange={(e) => setEditedStall({ ...editedStall, name: e.target.value })} className="col-span-3" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stall-category" className="text-right">Category</Label>
-            <Select value={editedStall.category} onValueChange={(value) => setEditedStall({ ...editedStall, category: value })}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {STALL_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stall-segment" className="text-right">Segment</Label>
-            <Select value={editedStall.segment} onValueChange={(value) => setEditedStall({ ...editedStall, segment: value })}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a segment" />
-              </SelectTrigger>
-              <SelectContent>
-                {STALL_SEGMENTS.map(seg => <SelectItem key={seg} value={seg}>{seg}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stall-image" className="text-right">Image</Label>
-            <Input id="stall-image" type="file" accept="image/*" onChange={handleImageUpload} className="col-span-3" />
-          </div>
-           {editedStall.image && (
+      <DialogPortal container={portalContainer}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isNewStall ? 'Add New Stall' : `Edit Stall ${editedStall.number}`}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <div className="col-start-2 col-span-3 relative aspect-video">
-                <Image src={editedStall.image} alt="Stall preview" layout="fill" objectFit="contain" className="rounded-md" />
+              <Label htmlFor="stall-number" className="text-right">Number</Label>
+              <Input id="stall-number" value={editedStall.number || ''} onChange={(e) => setEditedStall({ ...editedStall, number: e.target.value })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stall-name" className="text-right">Name</Label>
+              <Input id="stall-name" value={editedStall.name || ''} onChange={(e) => setEditedStall({ ...editedStall, name: e.target.value })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stall-category" className="text-right">Category</Label>
+              <Select value={editedStall.category} onValueChange={(value) => setEditedStall({ ...editedStall, category: value })}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STALL_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stall-segment" className="text-right">Segment</Label>
+              <Select value={editedStall.segment} onValueChange={(value) => setEditedStall({ ...editedStall, segment: value })}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a segment" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STALL_SEGMENTS.map(seg => <SelectItem key={seg} value={seg}>{seg}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stall-image" className="text-right">Image</Label>
+              <Input id="stall-image" type="file" accept="image/*" onChange={handleImageUpload} className="col-span-3" />
+            </div>
+            {editedStall.image && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="col-start-2 col-span-3 relative aspect-video">
+                  <Image src={editedStall.image} alt="Stall preview" layout="fill" objectFit="contain" className="rounded-md" />
+                </div>
               </div>
+            )}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stall-contact" className="text-right">Contact</Label>
+              <Input id="stall-contact" value={editedStall.contact || ''} placeholder="info@example.com" onChange={(e) => setEditedStall({ ...editedStall, contact: e.target.value })} className="col-span-3" />
             </div>
-          )}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stall-contact" className="text-right">Contact</Label>
-            <Input id="stall-contact" value={editedStall.contact || ''} placeholder="info@example.com" onChange={(e) => setEditedStall({ ...editedStall, contact: e.target.value })} className="col-span-3" />
+            {error && <p className="text-sm text-destructive col-span-4 text-center">{error}</p>}
           </div>
-          {error && <p className="text-sm text-destructive col-span-4 text-center">{error}</p>}
-        </div>
-        <DialogFooter className="sm:justify-between">
-            {!isNewStall ? (
-                <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                </Button>
-            ) : <div />}
-            <div className="flex gap-2">
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary">Cancel</Button>
-                </DialogClose>
-                <Button type="button" onClick={handleSave}>Save</Button>
-            </div>
-        </DialogFooter>
-      </DialogContent>
+          <DialogFooter className="sm:justify-between">
+              {!isNewStall ? (
+                  <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </Button>
+              ) : <div />}
+              <div className="flex gap-2">
+                  <DialogClose asChild>
+                      <Button type="button" variant="secondary">Cancel</Button>
+                  </DialogClose>
+                  <Button type="button" onClick={handleSave}>Save</Button>
+              </div>
+          </DialogFooter>
+        </DialogContent>
+      </DialogPortal>
     </Dialog>
 
     <ConfirmationDialog
