@@ -62,6 +62,7 @@ export default function VisitorView({ exhibitionData }: VisitorViewProps) {
             mode="visitor"
             onStallSelect={handleStallSelect}
             selectedStallId={selectedStall?.id}
+            className="aspect-[4/3]"
           />
         </CardContent>
       </Card>

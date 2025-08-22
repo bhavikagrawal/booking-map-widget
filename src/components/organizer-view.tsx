@@ -89,7 +89,7 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
       <Card>
         <CardHeader>
           <CardTitle>Interactive Floor Plan</CardTitle>
-          <CardDescription>Click on the floor plan to drop a pin and add a new stall. Click an existing stall to edit.</CardDescription>
+          <CardDescription>Click on the floor plan to drop a pin and add a new stall. Click an existing stall to edit. Use controls to zoom and pan.</CardDescription>
         </CardHeader>
         <CardContent>
           <FloorPlanCanvas
@@ -99,6 +99,7 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
             onPinDrop={handlePinDrop}
             onStallSelect={handleStallSelect}
             selectedStallId={currentStall?.id}
+            className="aspect-[4/3]"
           />
         </CardContent>
       </Card>
