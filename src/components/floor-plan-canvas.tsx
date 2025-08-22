@@ -83,57 +83,42 @@ export default function FloorPlanCanvas({
       const x = (stall.x / 100) * (imageRef.current?.width || canvas.width);
       const y = (stall.y / 100) * (imageRef.current?.height || canvas.height);
       
-      const stallImage = stall.id && stallImageRefs.current[stall.id];
+      const pinSize = mode === 'visitor' ? PIN_SIZE * 1.5 : PIN_SIZE;
+      const scaledPinSize = pinSize / transform.scale;
+
+      const pinColor = isSelected ? 'hsl(var(--primary))' : 'hsl(220 13% 69%)';
+      const textColor = 'white';
+
+      // Draw map pin shape
+      ctx.beginPath();
+      ctx.moveTo(x, y); // Tip of the pin
+      ctx.bezierCurveTo(x, y - scaledPinSize * 0.7, x - scaledPinSize * 0.5, y - scaledPinSize, x - scaledPinSize * 0.5, y - scaledPinSize);
+      ctx.arc(x, y - scaledPinSize, scaledPinSize * 0.5, Math.PI, 0);
+      ctx.bezierCurveTo(x + scaledPinSize * 0.5, y - scaledPinSize, x, y - scaledPinSize * 0.7, x, y);
+      ctx.closePath();
       
-      if (mode === 'visitor' && stall.image && stallImage && stallImage.complete && stallImage.naturalWidth > 0) {
-        // Visitor view: Draw image as pin
-        const visitorPinSize = PIN_SIZE * 2.5;
-        const aspectRatio = stallImage.naturalWidth / stallImage.naturalHeight;
-        const pinWidth = visitorPinSize;
-        const pinHeight = pinWidth / aspectRatio;
-        
-        ctx.save();
-        ctx.beginPath();
-        const circleCenterY = y - pinHeight / 2;
-        ctx.arc(x, circleCenterY, pinWidth / 2, 0, Math.PI * 2);
-        ctx.closePath();
-        
-        if (isSelected) {
-            ctx.shadowColor = 'hsl(var(--primary))';
-            ctx.shadowBlur = 40 / transform.scale;
-        }
+      ctx.fillStyle = pinColor;
+      if (isSelected && mode === 'visitor') {
+          ctx.shadowColor = 'hsl(var(--primary))';
+          ctx.shadowBlur = 20 / transform.scale;
+      }
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
 
-        ctx.fillStyle = 'white';
-        ctx.fill();
-        ctx.clip();
-        
-        ctx.drawImage(stallImage, x - pinWidth/2, y - pinHeight, pinWidth, pinHeight);
-        ctx.restore();
 
-        if (isSelected) {
-            ctx.beginPath();
-            ctx.arc(x, y - pinHeight / 2, pinWidth / 2, 0, Math.PI * 2);
-            ctx.strokeStyle = 'hsl(var(--primary))';
-            ctx.lineWidth = 6 / transform.scale;
-            ctx.stroke();
-            ctx.closePath();
-        }
-
-      } else {
-        // Organizer view or fallback: Draw Pin Icon
-        const pinColor = isSelected ? 'hsl(var(--primary))' : 'hsl(220 13% 69%)'; // Grey for unselected
-        const textColor = 'white';
-        
-        const scaledPinSize = PIN_SIZE / transform.scale;
-        const path = new Path2D(`M ${x} ${y} C ${x} ${y - scaledPinSize/2}, ${x - scaledPinSize/2} ${y - scaledPinSize/2}, ${x - scaledPinSize/2} ${y - scaledPinSize * 0.7} A ${scaledPinSize/2} ${scaledPinSize/2} 0 1 1 ${x + scaledPinSize/2} ${y - scaledPinSize * 0.7} C ${x + scaledPinSize/2} ${y - scaledPinSize/2}, ${x} ${y - scaledPinSize/2}, ${x} ${y}`);
-        ctx.fillStyle = pinColor;
-        ctx.fill(path);
-        
+      if (mode === 'organizer') {
+        // Draw stall number inside the pin for organizers
         ctx.fillStyle = textColor;
         ctx.font = `bold ${scaledPinSize * 0.4}px Inter`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(stall.number || '?', x, y - scaledPinSize * 0.7);
+        ctx.fillText(stall.number || '?', x, y - scaledPinSize);
+      } else {
+        // Draw a simple circle for visitors
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(x, y - scaledPinSize, scaledPinSize * 0.25, 0, 2 * Math.PI);
+        ctx.fill();
       }
     });
 
@@ -246,13 +231,19 @@ export default function FloorPlanCanvas({
     for (const stall of [...stalls].reverse()) {
       const stallX = (stall.x / 100) * imageWidth;
       const stallY = (stall.y / 100) * imageHeight;
-      const scaledPinSize = PIN_SIZE / transform.scale;
-
-      const dist = Math.sqrt(Math.pow(pos.x - stallX, 2) + Math.pow(pos.y - (stallY - scaledPinSize/2), 2));
       
-      if (dist < scaledHitbox / 2) {
-          clickedStall = stall;
-          break;
+      const pinSize = mode === 'visitor' ? PIN_SIZE * 1.5 : PIN_SIZE;
+      const scaledPinSize = pinSize / transform.scale;
+
+      // Hitbox for the entire pin shape
+      const pinTop = stallY - scaledPinSize * 1.5;
+      const pinBottom = stallY;
+      const pinLeft = stallX - scaledPinSize * 0.5;
+      const pinRight = stallX + scaledPinSize * 0.5;
+
+      if (pos.x >= pinLeft && pos.x <= pinRight && pos.y >= pinTop && pos.y <= pinBottom) {
+        clickedStall = stall;
+        break;
       }
     }
 
@@ -331,5 +322,3 @@ export default function FloorPlanCanvas({
     </div>
   );
 }
-
-    
