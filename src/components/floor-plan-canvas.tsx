@@ -174,28 +174,37 @@ export default function FloorPlanCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const setInitialCanvasSize = () => {
+    const loadImage = () => {
+      if (!floorPlanUrl) {
+        imageRef.current = null;
         const parent = canvas.parentElement;
         if (!parent) return;
-        const { width } = parent.getBoundingClientRect();
-        canvas.width = width;
-        canvas.height = width * (9/16); // default aspect ratio
-        if (floorPlanUrl && !imageRef.current) {
-          const img = new Image();
-          imageRef.current = img;
-          img.crossOrigin = "anonymous";
-          img.src = floorPlanUrl;
-          img.onload = () => {
-            canvas.width = parent.getBoundingClientRect().width;
-            canvas.height = (canvas.width / img.naturalWidth) * img.naturalHeight;
-            resetTransform(canvas);
-          };
-        } else {
-            resetTransform(canvas);
-        }
+        canvas.width = parent.getBoundingClientRect().width;
+        canvas.height = canvas.width * (9 / 16);
+        resetTransform(canvas);
+        draw();
+        return;
+      }
+      
+      const img = new Image();
+      imageRef.current = img;
+      img.crossOrigin = "anonymous";
+      img.src = floorPlanUrl;
+      img.onload = () => {
+        const parent = canvas.parentElement;
+        if (!parent) return;
+        canvas.width = parent.getBoundingClientRect().width;
+        canvas.height = (canvas.width / img.naturalWidth) * img.naturalHeight;
+        resetTransform(canvas);
+        draw();
+      };
+      img.onerror = () => {
+        imageRef.current = null;
+        draw();
+      }
     }
 
-    setInitialCanvasSize();
+    loadImage();
     
     const resizeObserver = new ResizeObserver(() => {
         const parent = canvas.parentElement;
