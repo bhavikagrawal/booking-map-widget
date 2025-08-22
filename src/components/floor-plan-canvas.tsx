@@ -47,6 +47,7 @@ export default function FloorPlanCanvas({
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPosition, setLastPanPosition] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hoveredStall, setHoveredStall] = useState<Stall | null>(null);
 
   const draw = () => {
     const canvas = canvasRef.current;
@@ -94,37 +95,68 @@ export default function FloorPlanCanvas({
       const y = (stall.y / 100) * (imageRef.current?.height || canvas.height);
       
       const pinSize = PIN_SIZE / transform.scale;
-      const pinColor = isSelected ? 'hsl(var(--primary))' : 'hsl(220 13% 69%)';
-      const textColor = 'white';
-  
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.bezierCurveTo(x, y - pinSize * 0.7, x - pinSize * 0.5, y - pinSize, x - pinSize * 0.5, y - pinSize);
-      ctx.arc(x, y - pinSize, pinSize * 0.5, Math.PI, 0);
-      ctx.bezierCurveTo(x + pinSize * 0.5, y - pinSize, x, y - pinSize * 0.7, x, y);
-      ctx.closePath();
+      const pinColor = isSelected ? 'hsl(var(--primary))' : 'hsl(0 72% 51%)';
       
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Draw pin
+      ctx.beginPath();
+      ctx.moveTo(0, 0); // bottom point
+      ctx.bezierCurveTo(-pinSize * 0.1, -pinSize * 0.8, -pinSize * 0.5, -pinSize * 0.9, -pinSize * 0.5, -pinSize * 1.2);
+      ctx.arc(0, -pinSize * 1.2, pinSize * 0.5, Math.PI, 0);
+      ctx.bezierCurveTo(pinSize * 0.5, -pinSize * 0.9, pinSize * 0.1, -pinSize * 0.8, 0, 0);
+      ctx.closePath();
+
       ctx.fillStyle = pinColor;
-      if (isSelected && mode === 'visitor') {
-          ctx.shadowColor = 'hsl(var(--primary))';
-          ctx.shadowBlur = 20;
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 1.5 / transform.scale;
+
+      if (isSelected || stall.id === hoveredStall?.id) {
+        ctx.shadowColor = 'hsl(var(--primary))';
+        ctx.shadowBlur = 20 / transform.scale;
       }
+      
       ctx.fill();
-      ctx.shadowColor = 'transparent';
-  
-      if (mode === 'organizer') {
-        ctx.fillStyle = textColor;
-        ctx.font = `bold ${pinSize * 0.4}px Inter`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(stall.number || '?', x, y - pinSize * 0.9);
-      } else {
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(x, y - pinSize, pinSize * 0.25, 0, 2 * Math.PI);
-        ctx.fill();
-      }
+      ctx.stroke();
+      ctx.restore();
     });
+
+    if (hoveredStall) {
+      const x = (hoveredStall.x / 100) * (imageRef.current?.width || canvas.width);
+      const y = (hoveredStall.y / 100) * (imageRef.current?.height || canvas.height);
+      const tooltipY = y - (PIN_SIZE / transform.scale) * 2;
+      
+      const lines = [
+        `Stall: ${hoveredStall.number}`,
+        `Name: ${hoveredStall.name}`,
+        `Category: ${hoveredStall.category}`
+      ];
+      
+      ctx.font = `500 ${14 / transform.scale}px Inter`;
+      const textMetrics = lines.map(line => ctx.measureText(line));
+      const tooltipWidth = Math.max(...textMetrics.map(m => m.width)) + 20 / transform.scale;
+      const lineHeight = 18 / transform.scale;
+      const tooltipHeight = (lines.length * lineHeight) + 10 / transform.scale;
+      const tooltipX = x - tooltipWidth / 2;
+
+      // Draw tooltip background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.lineWidth = 1 / transform.scale;
+      ctx.beginPath();
+      ctx.roundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 5 / transform.scale);
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw tooltip text
+      ctx.fillStyle = 'white';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      lines.forEach((line, index) => {
+        ctx.fillText(line, tooltipX + 10 / transform.scale, tooltipY + (lineHeight * (index + 0.5)) + 5 / transform.scale);
+      });
+    }
   
     ctx.restore();
   };
@@ -139,7 +171,7 @@ export default function FloorPlanCanvas({
         const targetWidth = isFullscreen ? window.innerWidth : container.clientWidth;
         const targetHeight = isFullscreen ? window.innerHeight : container.clientHeight;
 
-        if (isFullscreen || fitToContainer) {
+        if (isFullscreen) {
             const scaleX = targetWidth / imageRef.current.width;
             const scaleY = targetHeight / imageRef.current.height;
             scale = Math.min(scaleX, scaleY);
@@ -178,7 +210,7 @@ export default function FloorPlanCanvas({
 
   useEffect(() => {
     draw();
-  }, [stalls, selectedStallId, mode, transform, isFullscreen]);
+  }, [stalls, selectedStallId, mode, transform, isFullscreen, hoveredStall]);
   
   useEffect(() => {
     const handleResize = () => resetTransform(isFullscreen);
@@ -195,33 +227,51 @@ export default function FloorPlanCanvas({
     return { x, y };
   };
 
-  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getTransformedMousePos(e);
+  const getStallAtPos = (pos: {x: number, y: number}) => {
     const canvas = canvasRef.current!;
     const imageWidth = imageRef.current?.width || canvas.width;
     const imageHeight = imageRef.current?.height || canvas.height;
-
-    let clickedStall: Stall | null = null;
+    
+    let foundStall: Stall | null = null;
     const hitBoxScale = 1.5;
 
     for (const stall of [...stalls].reverse()) {
       const stallX = (stall.x / 100) * imageWidth;
       const stallY = (stall.y / 100) * imageHeight;
       
-      const pinTop = stallY - (PIN_SIZE / transform.scale) * hitBoxScale;
+      const pinHeadY = stallY - (PIN_SIZE * 1.2 / transform.scale);
+      
+      const dx = pos.x - stallX;
+      const dy = pos.y - pinHeadY;
+      const radius = (PIN_SIZE * 0.5 / transform.scale) * hitBoxScale;
+
+      if (dx * dx + dy * dy < radius * radius) {
+        foundStall = stall;
+        break;
+      }
+      
       const pinBottom = stallY;
-      const pinLeft = stallX - (PIN_SIZE/2 / transform.scale) * hitBoxScale;
-      const pinRight = stallX + (PIN_SIZE/2 / transform.scale) * hitBoxScale;
+      const pinTop = stallY - (PIN_SIZE * 1.7 / transform.scale); // Full pin height
+      const pinLeft = stallX - (PIN_SIZE * 0.5 / transform.scale) * hitBoxScale;
+      const pinRight = stallX + (PIN_SIZE * 0.5 / transform.scale) * hitBoxScale;
 
       if (pos.x >= pinLeft && pos.x <= pinRight && pos.y >= pinTop && pos.y <= pinBottom) {
-        clickedStall = stall;
+        foundStall = stall;
         break;
       }
     }
+    return foundStall;
+  }
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pos = getTransformedMousePos(e);
+    const clickedStall = getStallAtPos(pos);
 
     if (clickedStall) {
       onStallSelect?.(clickedStall);
     } else if (mode === 'organizer') {
+      const imageWidth = imageRef.current?.width || canvasRef.current!.width;
+      const imageHeight = imageRef.current?.height || canvasRef.current!.height;
       onPinDrop?.({
         x: (pos.x / imageWidth) * 100,
         y: (pos.y / imageHeight) * 100,
@@ -256,6 +306,10 @@ export default function FloorPlanCanvas({
   };
   
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pos = getTransformedMousePos(e);
+    const stall = getStallAtPos(pos);
+    setHoveredStall(stall);
+    
     if (!isPanning) return;
     const dx = e.clientX - lastPanPosition.x;
     const dy = e.clientY - lastPanPosition.y;
@@ -289,17 +343,17 @@ export default function FloorPlanCanvas({
   return (
     <div 
         ref={containerRef} 
-        className={cn("relative w-full bg-muted/50 rounded-lg border overflow-auto flex justify-center items-start", className, {
-            "fixed inset-0 z-[100] !items-center": isFullscreen,
+        className={cn("relative w-full bg-muted/50 rounded-lg border overflow-hidden flex justify-center items-center", className, {
+            "fixed inset-0 z-[100]": isFullscreen,
         })}
     >
        <canvas
         ref={canvasRef}
-        className={cn(mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '')}
+        className={cn(mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer', isPanning ? 'cursor-grabbing' : '', hoveredStall ? 'cursor-pointer' : '')}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={() => { handleMouseUp(); setHoveredStall(null); }}
         onMouseMove={handleMouseMove}
       />
       <div className="absolute top-2 right-2 flex flex-col gap-2">
