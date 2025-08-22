@@ -93,7 +93,7 @@ export default function FloorPlanCanvas({
       const x = (stall.x / 100) * (imageRef.current?.width || canvas.width);
       const y = (stall.y / 100) * (imageRef.current?.height || canvas.height);
       
-      const pinSize = PIN_SIZE;
+      const pinSize = PIN_SIZE / transform.scale;
       const pinColor = isSelected ? 'hsl(var(--primary))' : 'hsl(220 13% 69%)';
       const textColor = 'white';
   
@@ -139,7 +139,21 @@ export default function FloorPlanCanvas({
     
     if (imageRef.current) {
       const { width: imgWidth, height: imgHeight } = imageRef.current;
-      const scale = canvasWidth / imgWidth;
+      
+      const containerAspectRatio = canvasWidth / canvasHeight;
+      const imageAspectRatio = imgWidth / imgHeight;
+
+      let scale;
+      if (fitToContainer) {
+          if (imageAspectRatio > containerAspectRatio) {
+              scale = canvasWidth / imgWidth;
+          } else {
+              scale = canvasHeight / imgHeight;
+          }
+      } else {
+          scale = canvasWidth / imgWidth;
+      }
+      
       const x = (canvasWidth - imgWidth * scale) / 2;
       const y = (canvasHeight - imgHeight * scale) / 2;
       setTransform({ scale, x, y });
@@ -160,24 +174,24 @@ export default function FloorPlanCanvas({
       imageRef.current = img;
       img.crossOrigin = "anonymous";
       img.src = floorPlanUrl;
-      img.onload = () => resetTransform();
+      img.onload = () => resetTransform(isFullscreen);
       img.onerror = () => {
         imageRef.current = null;
         draw();
       }
     }
     loadImage();
-  }, [floorPlanUrl]);
+  }, [floorPlanUrl, isFullscreen]);
 
   useEffect(() => {
     draw();
   }, [stalls, selectedStallId, mode, transform, isFullscreen]);
   
   useEffect(() => {
-    const handleResize = () => resetTransform();
+    const handleResize = () => resetTransform(isFullscreen);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [isFullscreen]);
 
   const getTransformedMousePos = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -201,10 +215,10 @@ export default function FloorPlanCanvas({
       const stallX = (stall.x / 100) * imageWidth;
       const stallY = (stall.y / 100) * imageHeight;
       
-      const pinTop = stallY - PIN_SIZE * hitBoxScale;
+      const pinTop = stallY - (PIN_SIZE / transform.scale) * hitBoxScale;
       const pinBottom = stallY;
-      const pinLeft = stallX - (PIN_SIZE/2) * hitBoxScale;
-      const pinRight = stallX + (PIN_SIZE/2) * hitBoxScale;
+      const pinLeft = stallX - (PIN_SIZE/2 / transform.scale) * hitBoxScale;
+      const pinRight = stallX + (PIN_SIZE/2 / transform.scale) * hitBoxScale;
 
       if (pos.x >= pinLeft && pos.x <= pinRight && pos.y >= pinTop && pos.y <= pinBottom) {
         clickedStall = stall;
@@ -258,7 +272,7 @@ export default function FloorPlanCanvas({
   
   const handleFullscreenChange = () => {
     setIsFullscreen(!!document.fullscreenElement);
-    setTimeout(() => resetTransform(), 0);
+    setTimeout(() => resetTransform(!!document.fullscreenElement), 0);
   }
 
   useEffect(() => {
@@ -296,7 +310,7 @@ export default function FloorPlanCanvas({
       <div className="absolute top-2 right-2 flex flex-col gap-2">
         <Button size="icon" variant="outline" className="bg-background/80" onClick={() => handleZoom('in')}><ZoomIn /></Button>
         <Button size="icon" variant="outline" className="bg-background/80" onClick={() => handleZoom('out')}><ZoomOut /></Button>
-        <Button size="icon" variant="outline" className="bg-background/80" onClick={() => resetTransform()}><RefreshCcw /></Button>
+        <Button size="icon" variant="outline" className="bg-background/80" onClick={() => resetTransform(isFullscreen)}><RefreshCcw /></Button>
         <Button size="icon" variant="outline" className="bg-background/80" onClick={handleFullscreen}><Expand /></Button>
       </div>
       
@@ -314,5 +328,3 @@ export default function FloorPlanCanvas({
     </div>
   );
 }
-
-    
