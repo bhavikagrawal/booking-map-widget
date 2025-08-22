@@ -2,12 +2,10 @@
 'use server'
 
 import { stallRecommendation } from "@/ai/flows/stall-recommendation"
-import type { Stall, ExhibitionData, Floor, Venue } from "@/lib/types"
+import type { Stall, ExhibitionData } from "@/lib/types"
 
 export async function getStallRecommendation(selectedStall: Stall, exhibitionData: ExhibitionData) {
-  const allStalls: Stall[] = Object.values(exhibitionData.venues)
-    .flatMap((venue: Venue) => Object.values(venue.floors))
-    .flatMap((floor: Floor) => Object.values(floor.stalls));
+  const allStalls: Stall[] = Object.values(exhibitionData.stalls);
 
   const stallCategories = [...new Set(allStalls.map(stall => stall.category).filter(Boolean))];
   const stallSegments = [...new Set(allStalls.map(stall => stall.segment).filter(Boolean))];

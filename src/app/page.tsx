@@ -10,41 +10,14 @@ import { Toaster } from '@/components/ui/toaster';
 
 const defaultExhibitionData: ExhibitionData = {
     name: "Tech & Art Expo",
-    venues: {
-        "venue-01": {
-            name: "Main Convention Center",
-            floors: {
-                "floor-01": {
-                    name: "Ground Floor",
-                    floorPlanUrl: "https://placehold.co/1200x800.png",
-                    stalls: {
-                        "stall-001": { id: "stall-001", x: 20, y: 30, width: 10, height: 15, number: "A-101", category: "Electronics", segment: "Luxury", name: "ElectroWorld", contact: "contact@electroworld.com", image: "https://placehold.co/300x200.png" },
-                        "stall-002": { id: "stall-002", x: 55, y: 15, width: 10, height: 10, number: "A-102", category: "Food", segment: "Basic", name: "Gourmet Bites", contact: "info@gourmetbites.com", image: "https://placehold.co/300x200.png" },
-                        "stall-003": { id: "stall-003", x: 70, y: 75, width: 15, height: 10, number: "B-201", category: "Jewelry", segment: "Combo", name: "Gem Palace", contact: "support@gempalace.com", image: "https://placehold.co/300x200.png" }
-                    }
-                },
-                "floor-02": {
-                    name: "First Floor",
-                    floorPlanUrl: "https://placehold.co/1200x800.png",
-                    stalls: {
-                        "stall-004": { id: "stall-004", x: 35, y: 45, width: 10, height: 10, number: "C-301", category: "Art", segment: "Luxury", name: "Artistic Visions", contact: "gallery@artisticvisions.com", image: "https://placehold.co/300x200.png" },
-                        "stall-005": { id: "stall-005", x: 10, y: 65, width: 15, height: 10, number: "C-302", category: "Apparel", segment: "Basic", name: "Fashion Forward", contact: "sales@fashionforward.com", image: "https://placehold.co/300x200.png" }
-                    }
-                }
-            }
-        },
-        "venue-02": {
-            name: "Innovation Hub",
-            floors: {
-                "floor-03": {
-                    name: "Building B",
-                    floorPlanUrl: "https://placehold.co/1200x800.png",
-                    stalls: {
-                        "stall-006": { id: "stall-006", x: 45, y: 45, width: 15, height: 15, number: "D-401", category: "Electronics", segment: "Luxury", name: "Future Gadgets", contact: "info@futuregadgets.com", image: "https://placehold.co/300x200.png" }
-                    }
-                }
-            }
-        }
+    floorPlanUrl: "https://placehold.co/1200x800.png",
+    stalls: {
+        "stall-001": { id: "stall-001", x: 20, y: 30, number: "A-101", category: "Electronics", segment: "Luxury", name: "ElectroWorld", contact: "contact@electroworld.com", image: "https://placehold.co/300x200.png" },
+        "stall-002": { id: "stall-002", x: 55, y: 15, number: "A-102", category: "Food", segment: "Basic", name: "Gourmet Bites", contact: "info@gourmetbites.com", image: "https://placehold.co/300x200.png" },
+        "stall-003": { id: "stall-003", x: 70, y: 75, number: "B-201", category: "Jewelry", segment: "Combo", name: "Gem Palace", contact: "support@gempalace.com", image: "https://placehold.co/300x200.png" },
+        "stall-004": { id: "stall-004", x: 35, y: 45, number: "C-301", category: "Art", segment: "Luxury", name: "Artistic Visions", contact: "gallery@artisticvisions.com", image: "https://placehold.co/300x200.png" },
+        "stall-005": { id: "stall-005", x: 10, y: 65, number: "C-302", category: "Apparel", segment: "Basic", name: "Fashion Forward", contact: "sales@fashionforward.com", image: "https://placehold.co/300x200.png" },
+        "stall-006": { id: "stall-006", x: 45, y: 45, number: "D-401", category: "Electronics", segment: "Luxury", name: "Future Gadgets", contact: "info@futuregadgets.com", image: "https://placehold.co/300x200.png" }
     }
 };
 

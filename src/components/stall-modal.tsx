@@ -61,8 +61,6 @@ export function StallModal({ isOpen, setIsOpen, stall, onSave, onDelete, allStal
       segment: editedStall.segment || 'Basic',
       x: editedStall.x!,
       y: editedStall.y!,
-      width: editedStall.width!,
-      height: editedStall.height!,
       image: editedStall.image || '',
       contact: editedStall.contact || '',
     };

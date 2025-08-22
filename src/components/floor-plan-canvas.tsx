@@ -1,17 +1,19 @@
-
 "use client";
 
 import React, { useRef, useEffect, useState } from 'react';
 import type { Stall } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { ImageIcon } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+
+const PIN_SIZE = 32; // Size of the pin icon
+const PIN_HITBOX_SIZE = 40; // Clickable area for the pin
 
 interface FloorPlanCanvasProps {
   floorPlanUrl: string;
   stalls: Stall[];
   mode: 'organizer' | 'visitor';
   onStallSelect?: (stall: Stall) => void;
-  onStallDraw?: (stall: Omit<Stall, 'id' | 'number' | 'name' | 'category' | 'segment'>) => void;
+  onPinDrop?: (stall: Omit<Stall, 'id' | 'number' | 'name' | 'category' | 'segment'>) => void;
   selectedStallId?: string | null;
   className?: string;
 }
@@ -21,16 +23,13 @@ export default function FloorPlanCanvas({
   stalls,
   mode,
   onStallSelect,
-  onStallDraw,
+  onPinDrop,
   selectedStallId,
   className
 }: FloorPlanCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const stallImageRefs = useRef<{[key: string]: HTMLImageElement}>({});
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [drawingRect, setDrawingRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   const draw = () => {
     const canvas = canvasRef.current;
@@ -40,6 +39,7 @@ export default function FloorPlanCanvas({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Draw Background
     if (imageRef.current && imageRef.current.complete) {
       ctx.drawImage(imageRef.current, 0, 0, canvas.width, canvas.height);
     } else {
@@ -53,51 +53,64 @@ export default function FloorPlanCanvas({
       ctx.fillText(text, canvas.width / 2, canvas.height / 2);
     }
 
+    // Draw Stalls
     stalls.forEach(stall => {
       const isSelected = stall.id === selectedStallId;
       const x = (stall.x / 100) * canvas.width;
       const y = (stall.y / 100) * canvas.height;
-      const w = (stall.width / 100) * canvas.width;
-      const h = (stall.height / 100) * canvas.height;
       
       const stallImage = stall.id && stallImageRefs.current[stall.id];
-      if(mode === 'visitor' && stallImage && stallImage.complete && stallImage.naturalWidth > 0) {
+      const pinColor = isSelected ? 'hsl(var(--primary))' : 'hsl(var(--destructive))';
+      const textColor = isSelected ? 'white' : 'white';
+      
+      if (mode === 'visitor' && stall.image && stallImage && stallImage.complete && stallImage.naturalWidth > 0) {
+        // Draw image as pin for visitor
+        const aspectRatio = stallImage.naturalWidth / stallImage.naturalHeight;
+        const pinWidth = PIN_SIZE * 1.5;
+        const pinHeight = (pinWidth / aspectRatio);
+        
         ctx.save();
-        ctx.globalAlpha = 0.9;
-        ctx.drawImage(stallImage, x, y, w, h);
-        ctx.globalAlpha = 1.0;
-        ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
-        ctx.lineWidth = isSelected ? 3 : 2;
-        ctx.strokeRect(x,y,w,h);
+        ctx.beginPath();
+        ctx.arc(x, y - pinHeight / 2, pinWidth / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        
+        if (isSelected) {
+            ctx.shadowColor = 'hsl(var(--primary))';
+            ctx.shadowBlur = 20;
+        }
+
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.clip();
+        
+        ctx.drawImage(stallImage, x - pinWidth/2, y - pinHeight, pinWidth, pinHeight);
         ctx.restore();
+
+        if (isSelected) {
+            ctx.strokeStyle = 'hsl(var(--primary))';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
       } else {
-        ctx.fillStyle = isSelected ? 'hsla(var(--primary), 0.7)' : 'hsla(var(--secondary-foreground), 0.5)';
-        ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(var(--secondary-foreground))';
-        ctx.lineWidth = isSelected ? 3 : 1.5;
-
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeRect(x, y, w, h);
-
-        ctx.fillStyle = isSelected ? 'hsl(var(--primary-foreground))' : 'hsl(var(--secondary-foreground))';
-        ctx.font = `bold ${Math.min(16, w/3, h/3)}px Inter`;
+        // Draw Pin Icon
+        ctx.fillStyle = pinColor;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.bezierCurveTo(x, y - PIN_SIZE/2, x - PIN_SIZE/2, y - PIN_SIZE/2, x - PIN_SIZE/2, y - PIN_SIZE * 0.7);
+        ctx.arc(x, y - PIN_SIZE * 0.7, PIN_SIZE/2, -Math.PI, 0);
+        ctx.bezierCurveTo(x + PIN_SIZE/2, y - PIN_SIZE/2, x, y - PIN_SIZE/2, x, y);
+        ctx.fill();
+        ctx.closePath();
+        
+        // Draw stall number inside pin
+        ctx.fillStyle = textColor;
+        ctx.font = `bold ${PIN_SIZE * 0.4}px Inter`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(stall.number || '?', x + w / 2, y + h / 2);
-
-        if (mode === 'organizer' && stall.image) {
-            ctx.fillStyle = 'hsl(var(--accent-foreground))';
-            ctx.font = `bold ${Math.min(12, w/5, h/5)}px Inter`;
-            ctx.fillText('🖼️', x + w - 10, y + 10);
-        }
+        ctx.fillText(stall.number || '?', x, y - PIN_SIZE * 0.7);
       }
     });
-
-    if (drawingRect) {
-      ctx.fillStyle = 'hsla(var(--accent), 0.4)';
-      ctx.strokeStyle = 'hsl(var(--accent))';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(drawingRect.x, drawingRect.y, drawingRect.width, drawingRect.height);
-    }
   };
   
   const preloadStallImages = () => {
@@ -107,7 +120,7 @@ export default function FloorPlanCanvas({
         img.crossOrigin = "anonymous";
         img.src = stall.image;
         img.onload = () => draw();
-        img.onerror = () => draw();
+        img.onerror = () => draw(); // Still draw if image fails
         stallImageRefs.current[stall.id] = img;
       }
     })
@@ -121,18 +134,26 @@ export default function FloorPlanCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return;
     
+    const setCanvasSize = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      
+      const { width } = parent.getBoundingClientRect();
+      const img = imageRef.current;
+      
+      if(img && img.naturalWidth > 0) {
+          canvas.width = width;
+          canvas.height = (width / img.naturalWidth) * img.naturalHeight;
+      } else {
+          canvas.width = width;
+          canvas.height = width * (9/16);
+      }
+      draw();
+    }
+    
     const resizeObserver = new ResizeObserver(entries => {
       for (let entry of entries) {
-        const { width } = entry.contentRect;
-        const img = imageRef.current;
-        if(img && img.naturalWidth > 0) {
-            canvas.width = width;
-            canvas.height = (width / img.naturalWidth) * img.naturalHeight;
-        } else {
-            canvas.width = width;
-            canvas.height = width * (9/16);
-        }
-        draw();
+        setCanvasSize();
       }
     });
 
@@ -146,20 +167,15 @@ export default function FloorPlanCanvas({
       img.crossOrigin = "anonymous";
       img.src = floorPlanUrl;
       img.onload = () => {
-         if (canvas.parentElement) {
-            const { width } = canvas.parentElement.getBoundingClientRect();
-            canvas.width = width;
-            canvas.height = (width / img.naturalWidth) * img.naturalHeight;
-         }
-        draw();
+        setCanvasSize();
       };
       img.onerror = () => {
         imageRef.current = null;
-        draw();
+        setCanvasSize();
       }
     } else {
       imageRef.current = null;
-      draw();
+      setCanvasSize();
     }
 
     return () => resizeObserver.disconnect();
@@ -167,7 +183,7 @@ export default function FloorPlanCanvas({
 
   useEffect(() => {
     draw();
-  }, [stalls, selectedStallId, drawingRect]);
+  }, [stalls, selectedStallId, mode]);
 
   const getMousePos = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
@@ -177,84 +193,42 @@ export default function FloorPlanCanvas({
     };
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const pos = getMousePos(e);
     const canvas = canvasRef.current!;
-    let clickedOnStall = false;
 
-    for (const stall of stalls) {
+    // Check if a stall was clicked
+    let clickedStall: Stall | null = null;
+    // Iterate in reverse to select top-most stall
+    for (const stall of [...stalls].reverse()) {
       const stallX = (stall.x / 100) * canvas.width;
       const stallY = (stall.y / 100) * canvas.height;
-      const stallW = (stall.width / 100) * canvas.width;
-      const stallH = (stall.height / 100) * canvas.height;
-      if (pos.x >= stallX && pos.x <= stallX + stallW && pos.y >= stallY && pos.y <= stallY + stallH) {
-        onStallSelect?.(stall);
-        clickedOnStall = true;
-        break;
+      const dist = Math.sqrt(Math.pow(pos.x - stallX, 2) + Math.pow(pos.y - (stallY - PIN_SIZE/2), 2));
+      
+      if (dist < PIN_HITBOX_SIZE / 2) {
+          clickedStall = stall;
+          break;
       }
     }
 
-    if (mode === 'organizer' && !clickedOnStall) {
-      setIsDrawing(true);
-      setStartPos(pos);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || mode !== 'organizer') return;
-    const pos = getMousePos(e);
-    const newRect = {
-      x: Math.min(startPos.x, pos.x),
-      y: Math.min(startPos.y, pos.y),
-      width: Math.abs(pos.x - startPos.x),
-      height: Math.abs(pos.y - startPos.y),
-    };
-    setDrawingRect(newRect);
-  };
-
-  const handleMouseUp = () => {
-    if (!isDrawing || mode !== 'organizer') return;
-    setIsDrawing(false);
-    if (drawingRect && drawingRect.width > 5 && drawingRect.height > 5) {
-      const canvas = canvasRef.current!;
-      onStallDraw?.({
-        x: (drawingRect.x / canvas.width) * 100,
-        y: (drawingRect.y / canvas.height) * 100,
-        width: (drawingRect.width / canvas.width) * 100,
-        height: (drawingRect.height / canvas.height) * 100,
+    if (clickedStall) {
+      onStallSelect?.(clickedStall);
+    } else if (mode === 'organizer') {
+      // If no stall clicked in organizer mode, it's a new pin drop
+      onPinDrop?.({
+        x: (pos.x / canvas.width) * 100,
+        y: (pos.y / canvas.height) * 100,
       });
     }
-    setDrawingRect(null);
   };
-
-  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (mode !== 'visitor') return;
-    const pos = getMousePos(e);
-    const canvas = canvasRef.current!;
-    
-    for (const stall of stalls) {
-      const stallX = (stall.x / 100) * canvas.width;
-      const stallY = (stall.y / 100) * canvas.height;
-      const stallW = (stall.width / 100) * canvas.width;
-      const stallH = (stall.height / 100) * canvas.height;
-      if (pos.x >= stallX && pos.x <= stallX + stallW && pos.y >= stallY && pos.y <= stallY + stallH) {
-        onStallSelect?.(stall);
-        break;
-      }
-    }
-  }
 
   return (
     <div className={cn("relative w-full h-full bg-muted/50 rounded-lg overflow-hidden border", className)}>
        <canvas
         ref={canvasRef}
         className={cn("w-full h-auto", mode === 'organizer' ? 'cursor-crosshair' : 'cursor-pointer')}
-        onMouseDown={mode === 'organizer' ? handleMouseDown : undefined}
-        onMouseMove={mode === 'organizer' ? handleMouseMove : undefined}
-        onMouseUp={mode === 'organizer' ? handleMouseUp : undefined}
-        onClick={mode === 'visitor' ? handleClick : undefined}
+        onClick={handleClick}
       />
     </div>
   );
 }
- 
