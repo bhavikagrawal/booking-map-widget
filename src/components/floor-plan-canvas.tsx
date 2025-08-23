@@ -220,14 +220,7 @@ export default function FloorPlanCanvas({
       img.crossOrigin = "anonymous";
       img.src = floorPlanUrl;
       img.onload = () => {
-        const container = containerRef.current;
-        if(container) {
-            const containerWidth = container.clientWidth;
-            const scale = containerWidth / img.naturalWidth;
-            setTransform({ scale: scale, x: 0, y: 0 });
-        } else {
-            resetTransform(isFullscreen);
-        }
+        resetTransform(false);
       };
       img.onerror = () => {
         imageRef.current = null;
@@ -242,7 +235,7 @@ export default function FloorPlanCanvas({
   }, [stalls, selectedStallId, mode, transform, isFullscreen, hoveredStall]);
   
   useEffect(() => {
-    const handleResize = () => resetTransform(isFullscreen);
+    const handleResize = () => resetTransform(false);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [isFullscreen]);
@@ -262,7 +255,7 @@ export default function FloorPlanCanvas({
     const imageHeight = imageRef.current.naturalHeight;
     
     let foundStall: Stall | null = null;
-    const hitBoxScale = 2.5;
+    const hitBoxScale = 1.5;
 
     for (const stall of [...stalls].reverse()) {
       const stallX = (stall.x / 100) * imageWidth;
@@ -338,7 +331,7 @@ export default function FloorPlanCanvas({
   const handleFullscreenChange = () => {
     const isCurrentlyFullscreen = !!document.fullscreenElement;
     setIsFullscreen(isCurrentlyFullscreen);
-    resetTransform(isCurrentlyFullscreen);
+    resetTransform(false);
   }
 
   useEffect(() => {
@@ -376,7 +369,7 @@ export default function FloorPlanCanvas({
       <div className="absolute top-2 right-2 flex flex-col gap-2">
         <Button size="icon" variant="outline" className="bg-background/80" onClick={() => handleZoom('in')}><ZoomIn /></Button>
         <Button size="icon" variant="outline" className="bg-background/80" onClick={() => handleZoom('out')}><ZoomOut /></Button>
-        <Button size="icon" variant="outline" className="bg-background/80" onClick={() => resetTransform(isFullscreen)}><RefreshCcw /></Button>
+        <Button size="icon" variant="outline" className="bg-background/80" onClick={() => resetTransform(false)}><RefreshCcw /></Button>
         <Button size="icon" variant="outline" className="bg-background/80" onClick={handleFullscreen}><Expand /></Button>
       </div>
       
