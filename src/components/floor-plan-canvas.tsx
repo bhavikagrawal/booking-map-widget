@@ -8,7 +8,7 @@ import { ZoomIn, ZoomOut, RefreshCcw, Expand } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StallModal } from './stall-modal';
 
-const PIN_SIZE = 32;
+const PIN_SIZE = 12;
 
 interface FloorPlanCanvasProps {
   floorPlanUrl: string;
@@ -96,51 +96,43 @@ export default function FloorPlanCanvas({
 
     stalls.forEach(stall => {
       const isSelected = stall.id === selectedStallId;
+      const isHovered = stall.id === hoveredStall?.id;
       const x = (stall.x / 100) * imageWidth;
       const y = (stall.y / 100) * imageHeight;
       
-      const pinSize = PIN_SIZE / transform.scale;
-      const headRadius = pinSize / 3;
-      const stemHeight = pinSize;
+      const dotRadius = PIN_SIZE / transform.scale;
       
       ctx.save();
-      ctx.translate(x, y - stemHeight);
-      
-      // Draw stem
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(0, stemHeight);
-      ctx.strokeStyle = 'hsl(0 0% 40%)';
-      ctx.lineWidth = 2 / transform.scale;
-      ctx.stroke();
+      ctx.translate(x, y);
 
-      // Draw head
-      ctx.beginPath();
-      ctx.arc(0, 0, headRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(0 84% 60%)';
-      ctx.fill();
-
-      // Draw highlight on head
-      ctx.beginPath();
-      ctx.arc(-headRadius / 4, -headRadius / 4, headRadius / 4, 0, 2 * Math.PI);
-      ctx.fillStyle = 'hsla(0, 100%, 100%, 0.5)';
-      ctx.fill();
-
-      if (isSelected || stall.id === hoveredStall?.id) {
+      // Draw outer ring for selected/hovered
+      if (isSelected || isHovered) {
           ctx.beginPath();
-          ctx.arc(0, 0, headRadius + 4/transform.scale, 0, 2 * Math.PI);
+          ctx.arc(0, 0, dotRadius + 4/transform.scale, 0, 2 * Math.PI);
           ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(0 84% 60%)';
           ctx.lineWidth = 3 / transform.scale;
           ctx.stroke();
       }
       
+      // Draw dot
+      ctx.beginPath();
+      ctx.arc(0, 0, dotRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(0 84% 60%)';
+      ctx.fill();
+
+      // Draw white inner dot
+      ctx.beginPath();
+      ctx.arc(0, 0, dotRadius * 0.4, 0, 2 * Math.PI);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+
       ctx.restore();
     });
 
     if (hoveredStall) {
       const x = (hoveredStall.x / 100) * imageWidth;
       const y = (hoveredStall.y / 100) * imageHeight;
-      const tooltipY = y - (PIN_SIZE / transform.scale) * 1.5;
+      const tooltipY = y - (PIN_SIZE / transform.scale) * 2.5;
       
       const lines = [
         `Stall: ${hoveredStall.number}`,
@@ -153,8 +145,14 @@ export default function FloorPlanCanvas({
       const tooltipWidth = Math.max(...textMetrics.map(m => m.width)) + 20 / transform.scale;
       const lineHeight = 18 / transform.scale;
       const tooltipHeight = (lines.length * lineHeight) + 10 / transform.scale;
-      const tooltipX = x - tooltipWidth / 2;
+      let tooltipX = x - tooltipWidth / 2;
 
+      // prevent tooltip from going off-screen
+      if(imageRef.current) {
+        if(tooltipX < 0) tooltipX = 5 / transform.scale;
+        if(tooltipX + tooltipWidth > imageRef.current.naturalWidth) tooltipX = imageRef.current.naturalWidth - tooltipWidth - 5 / transform.scale;
+      }
+      
       // Draw tooltip background
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
@@ -184,9 +182,16 @@ export default function FloorPlanCanvas({
     if (imageRef.current) {
         let scale;
         const targetWidth = isFullscreen ? window.innerWidth : container.clientWidth;
-        const targetHeight = isFullscreen ? window.innerHeight : container.clientHeight;
+        let targetHeight = container.clientHeight;
+        
+        if(isFullscreen) {
+          targetHeight = window.innerHeight;
+        } else if (imageRef.current && imageRef.current.naturalHeight > 0) {
+            targetHeight = (targetWidth / imageRef.current.naturalWidth) * imageRef.current.naturalHeight;
+        }
 
-        if (fitToContainer) {
+
+        if (fitToContainer && imageRef.current.naturalHeight > 0) {
             const scaleX = targetWidth / imageRef.current.naturalWidth;
             const scaleY = targetHeight / imageRef.current.naturalHeight;
             scale = Math.min(scaleX, scaleY);
@@ -214,7 +219,16 @@ export default function FloorPlanCanvas({
       imageRef.current = img;
       img.crossOrigin = "anonymous";
       img.src = floorPlanUrl;
-      img.onload = () => resetTransform(isFullscreen);
+      img.onload = () => {
+        const container = containerRef.current;
+        if(container) {
+            const containerWidth = container.clientWidth;
+            const scale = containerWidth / img.naturalWidth;
+            setTransform({ scale: scale, x: 0, y: 0 });
+        } else {
+            resetTransform(isFullscreen);
+        }
+      };
       img.onerror = () => {
         imageRef.current = null;
         draw();
@@ -248,29 +262,17 @@ export default function FloorPlanCanvas({
     const imageHeight = imageRef.current.naturalHeight;
     
     let foundStall: Stall | null = null;
-    const hitBoxScale = 1.5;
+    const hitBoxScale = 2.5;
 
     for (const stall of [...stalls].reverse()) {
       const stallX = (stall.x / 100) * imageWidth;
       const stallY = (stall.y / 100) * imageHeight;
       
-      const pinHeadY = stallY - (PIN_SIZE / transform.scale);
-      
       const dx = pos.x - stallX;
-      const dy = pos.y - pinHeadY;
-      const radius = (PIN_SIZE / 3 / transform.scale) * hitBoxScale;
+      const dy = pos.y - stallY;
+      const radius = (PIN_SIZE / transform.scale) * hitBoxScale;
 
       if (dx * dx + dy * dy < radius * radius) {
-        foundStall = stall;
-        break;
-      }
-      
-      const stemBottom = stallY;
-      const stemTop = stallY - (PIN_SIZE / transform.scale); 
-      const stemLeft = stallX - (2 / transform.scale) * hitBoxScale;
-      const stemRight = stallX + (2 / transform.scale) * hitBoxScale;
-
-      if (pos.x >= stemLeft && pos.x <= stemRight && pos.y >= stemTop && pos.y <= stemBottom) {
         foundStall = stall;
         break;
       }
