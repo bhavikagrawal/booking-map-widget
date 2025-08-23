@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Exhibition Widget Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/dist/widget/widget.css" />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; background:#f5f5f5; }
+    #app { max-width: 1200px; margin: 0 auto; }
+    .controls { margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <button onclick="switchMode('organizer')">Organizer Mode</button>
+    <button onclick="switchMode('visitor')">Visitor Mode</button>
+  </div>
+  <div id="app"></div>
+  <script src="/dist/widget/index.global.js"></script>
+  <script>
+    const { mount, InMemoryAdapter } = window.ExhibitionWidget || {};
+    if (!mount) {
+      document.getElementById('app').innerHTML = '<p style="color:red">Global bundle not found. Run: npm run build:widget:all</p>';
+    } else {
+      const adapter = new InMemoryAdapter({
+        demoEvent: { name: 'Demo Expo', floorPlanUrl: 'https://placehold.co/1200x800.png', stalls: {} }
+      });
+      let mode = 'organizer';
+      function render() { mount('#app', { mode, eventId: 'demoEvent', adapter }); }
+      window.switchMode = m => { mode = m; render(); };
+      render();
+    }
+  </script>
+</body>
+</html>
