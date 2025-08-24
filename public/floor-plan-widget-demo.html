@@ -12,23 +12,77 @@
         --popover: 0 0% 100%;
         --popover-foreground: 222.2 84% 4.9%;
       }
-      body { font-family: system-ui, sans-serif; padding: 2rem; line-height: 1.4; }
-      h1 { margin: 0 0 1rem; }
-      .tabs { display: flex; gap: 0.5rem; margin: 1rem 0 1.25rem; }
-      .tab { padding: 0.5rem 1rem; border: 1px solid #ccc; background: #fafafa; cursor: pointer; border-radius: 4px; font-size: 0.9rem; }
-      .tab.active { background: #e5e7eb; font-weight: 600; }
-      .panel { display: none; }
-      .panel.active { display: block; }
-      .widget-shell { width: 800px; height: 600px; border: 1px solid #999; background: #f5f5f5; border-radius:8px; position:relative; overflow:hidden; }
-      #studio-floorplan-organizer.widget-shell { border-style: dashed; }
-      .widget-shell canvas { outline: none; display:block; }
-      .log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; background: #f8f9fa; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; max-height: 220px; overflow: auto; font-size: 0.75rem; }
-      .meta { color: #555; font-size: 0.8rem; margin-bottom: 0.25rem; }
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 2rem;
+        line-height: 1.4;
+      }
+      h1 {
+        margin: 0 0 1rem;
+      }
+      .tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin: 1rem 0 1.25rem;
+      }
+      .tab {
+        padding: 0.5rem 1rem;
+        border: 1px solid #ccc;
+        background: #fafafa;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 0.9rem;
+      }
+      .tab.active {
+        background: #e5e7eb;
+        font-weight: 600;
+      }
+      .panel {
+        display: none;
+      }
+      .panel.active {
+        display: block;
+      }
+      .widget-shell {
+        width: 800px;
+        height: 600px;
+        border: 1px solid #999;
+        background: #f5f5f5;
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+      }
+      #studio-floorplan-organizer.widget-shell {
+        border-style: dashed;
+      }
+      .widget-shell canvas {
+        outline: none;
+        display: block;
+      }
+      .log {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+        background: #f8f9fa;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        max-height: 220px;
+        overflow: auto;
+        font-size: 0.75rem;
+      }
+      .meta {
+        color: #555;
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+      }
     </style>
   </head>
   <body>
     <h1>Studio Floor Plan Widget</h1>
-    <p class="meta">This demo mounts two independent instances (customer + organizer) on demand.</p>
+    <p class="meta">
+      This demo mounts two independent instances (customer + organizer) on
+      demand.
+    </p>
 
     <div class="tabs" id="tabs">
       <button class="tab active" data-tab="customer">Customer View</button>
@@ -49,51 +103,177 @@
     <script>
       (() => {
         // Utilities
-        const select = (s, r=document) => r.querySelector(s);
-        const selectAll = (s, r=document) => Array.from(r.querySelectorAll(s));
-        const logEl = select('#event-log');
-        const nowTime = () => new Date().toISOString().split('T')[1].replace('Z','');
-        const log = (msg,data) => { logEl.textContent += `[${nowTime()}] ${msg}` + (data ? ' ' + JSON.stringify(data) : '') + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+        const select = (s, r = document) => r.querySelector(s);
+        const selectAll = (s, r = document) =>
+          Array.from(r.querySelectorAll(s));
+        const logEl = select("#event-log");
+        const nowTime = () =>
+          new Date().toISOString().split("T")[1].replace("Z", "");
+        const log = (msg, data) => {
+          logEl.textContent +=
+            `[${nowTime()}] ${msg}` +
+            (data ? " " + JSON.stringify(data) : "") +
+            "\n";
+          logEl.scrollTop = logEl.scrollHeight;
+        };
 
         // Use higher-res placeholder for clearer scaling
-        const floorPlanUrl = 'https://placehold.co/600x400';
+        const floorPlanUrl = "https://placehold.co/600x400";
         const baseStalls = [
-          { id:'s-1', number:'A1', name:'Coffee Corner', category:'Food',        segment:'Basic',   x:15, y:25, image:'', contact:'coffee@example.com' },
-          { id:'s-2', number:'B2', name:'Gadget Grove',  category:'Electronics', segment:'Premium', x:40, y:55, image:'', contact:'gadget@example.com' },
-          { id:'s-3', number:'C3', name:'Art Alley',     category:'Art',         segment:'Combo',   x:70, y:30, image:'', contact:'art@example.com' },
-          { id:'s-4', number:'D4', name:'Jewels Hub',    category:'Jewelry',     segment:'Luxury',  x:55, y:75, image:'', contact:'jewels@example.com' }
+          {
+            id: "s-1",
+            number: "A1",
+            name: "Coffee Corner",
+            category: "Food",
+            segment: "Basic",
+            x: 15,
+            y: 25,
+            image: "",
+            contact: "coffee@example.com",
+          },
+          {
+            id: "s-2",
+            number: "B2",
+            name: "Gadget Grove",
+            category: "Electronics",
+            segment: "Premium",
+            x: 40,
+            y: 55,
+            image: "",
+            contact: "gadget@example.com",
+          },
+          {
+            id: "s-3",
+            number: "C3",
+            name: "Art Alley",
+            category: "Art",
+            segment: "Combo",
+            x: 70,
+            y: 30,
+            image: "",
+            contact: "art@example.com",
+          },
+          {
+            id: "s-4",
+            number: "D4",
+            name: "Jewels Hub",
+            category: "Jewelry",
+            segment: "Luxury",
+            x: 55,
+            y: 75,
+            image: "",
+            contact: "jewels@example.com",
+          },
         ];
-        let organizerStalls = (structuredClone ? structuredClone(baseStalls) : JSON.parse(JSON.stringify(baseStalls)));
+        let organizerStalls = structuredClone
+          ? structuredClone(baseStalls)
+          : JSON.parse(JSON.stringify(baseStalls));
 
         // Callbacks
-        function handleSelectionChange(stall) { log('Selection Change', stall ? { id: stall.id, number: stall.number } : null); }
-        function handleFloorPlanUpdate(data) { log('Floor Plan Update (count)', { count: data.stalls.length }); organizerStalls = data.stalls; }
+        function handleSelectionChange(stall) {
+          log(
+            "Selection Change",
+            stall ? { id: stall.id, number: stall.number } : null
+          );
+        }
+        function handleFloorPlanUpdate(data) {
+          log("Floor Plan Update (count)", { count: data.stalls.length });
+          organizerStalls = data.stalls;
+        }
 
         // Config
-        const common = { clientId:'demo-client-123', dimensions:{ width:800, height:600 }, interactive:true, theme:'light', handleSelectionChange, handleFloorPlanUpdate };
-        const customerConfig = () => ({ ...common, containerId:'studio-floorplan-customer', viewType:'customer',  floorPlanData:{ floorPlanUrl, stalls: organizerStalls.slice(0,2) } });
-        const organizerConfig = () => ({ ...common, containerId:'studio-floorplan-organizer', viewType:'organizer', floorPlanData:{ floorPlanUrl, stalls: organizerStalls } });
+        const common = {
+          clientId: "demo-client-123",
+          dimensions: { width: 800, height: 600 },
+          interactive: true,
+          theme: "light",
+          handleSelectionChange,
+          handleFloorPlanUpdate,
+          tooltipFields: [
+            { id: "price" },
+            { id: "capacity" },
+            { id: "description" },
+          ],
+          dynamicFields: [
+            {
+              id: "price",
+              label: "Price",
+              type: "number",
+              placeholder: "100",
+              required: false,
+            },
+            {
+              id: "capacity",
+              label: "Capacity",
+              type: "number",
+              placeholder: "50",
+            },
+            {
+              id: "description",
+              label: "Description",
+              type: "textarea",
+              placeholder: "Longer description...",
+            },
+          ],
+          onStallSave: (stall, info) => {
+            console.log('Stall Saved', { id: stall.id, x: stall.x, y: stall.y, isNew: info.isNew, price: stall.price, capacity: stall.capacity });
+          },
+        };
+        const customerConfig = () => ({
+          ...common,
+          containerId: "studio-floorplan-customer",
+          viewType: "customer",
+          floorPlanData: { floorPlanUrl, stalls: organizerStalls.slice(0, 2) },
+        });
+        const organizerConfig = () => ({
+          ...common,
+          containerId: "studio-floorplan-organizer",
+          viewType: "organizer",
+          floorPlanData: { floorPlanUrl, stalls: organizerStalls },
+        });
 
         // Init helpers
-        let customerMounted=false, organizerMounted=false;
-        function ensureCustomer(){ if(!customerMounted){ log('Init Customer'); StudioFloorPlan.init(customerConfig()); customerMounted=true; } }
-        function ensureOrganizer(){ if(!organizerMounted){ log('Init Organizer'); StudioFloorPlan.init(organizerConfig()); organizerMounted=true; } }
+        let customerMounted = false,
+          organizerMounted = false;
+        function ensureCustomer() {
+          if (!customerMounted) {
+            log("Init Customer");
+            StudioFloorPlan.init(customerConfig());
+            customerMounted = true;
+          }
+        }
+        function ensureOrganizer() {
+          if (!organizerMounted) {
+            log("Init Organizer");
+            StudioFloorPlan.init(organizerConfig());
+            organizerMounted = true;
+          }
+        }
 
         // Tabs
-        function setupTabs(){
-          selectAll('.tab').forEach(btn => btn.addEventListener('click', () => {
-            if(btn.classList.contains('active')) return;
-            selectAll('.tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
-            const target = btn.dataset.tab;
-            selectAll('.panel').forEach(p=>p.classList.remove('active'));
-            select(`#panel-${target}`).classList.add('active');
-            (target==='customer'?ensureCustomer:ensureOrganizer)();
-          }));
+        function setupTabs() {
+          selectAll(".tab").forEach((btn) =>
+            btn.addEventListener("click", () => {
+              if (btn.classList.contains("active")) return;
+              selectAll(".tab").forEach((b) => b.classList.remove("active"));
+              btn.classList.add("active");
+              const target = btn.dataset.tab;
+              selectAll(".panel").forEach((p) => p.classList.remove("active"));
+              select(`#panel-${target}`).classList.add("active");
+              (target === "customer" ? ensureCustomer : ensureOrganizer)();
+            })
+          );
         }
 
         // Bootstrap
-        document.addEventListener('DOMContentLoaded', () => {
-          if(typeof StudioFloorPlan==='undefined' && !window.StudioFloorPlan){ console.error('StudioFloorPlan global not found'); return; }
+        document.addEventListener("DOMContentLoaded", () => {
+          if (
+            typeof StudioFloorPlan === "undefined" &&
+            !window.StudioFloorPlan
+          ) {
+            console.error("StudioFloorPlan global not found");
+            return;
+          }
           setupTabs();
           ensureCustomer(); // default
         });

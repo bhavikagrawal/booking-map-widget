@@ -22,6 +22,9 @@ export interface FloorPlanWidgetProps {
   theme?: 'light' | 'dark';
   handleFloorPlanUpdate?: (data: { stalls: Stall[] }) => void;
   handleSelectionChange?: (selection: Stall | null) => void;
+  tooltipFields?: Array<{ id: string; label?: string; }>;
+  dynamicFields?: Array<{ id: string; label: string; type?: 'text' | 'number' | 'textarea'; required?: boolean; placeholder?: string; }>;
+  onStallSave?: (stall: Stall, info: { isNew: boolean; all: Stall[] }) => void; // new callback per save
 }
 
 function FloorPlanWidget(props: FloorPlanWidgetProps) {
@@ -30,6 +33,9 @@ function FloorPlanWidget(props: FloorPlanWidgetProps) {
     floorPlanData,
     handleSelectionChange,
     handleFloorPlanUpdate,
+    tooltipFields,
+    dynamicFields,
+    onStallSave,
   } = props;
 
   const [stalls, setStalls] = React.useState<Stall[]>(floorPlanData?.stalls || []);
@@ -56,18 +62,22 @@ function FloorPlanWidget(props: FloorPlanWidgetProps) {
   };
 
   const handleSaveStall = (stallToSave: Stall) => {
-    let updatedStalls;
-    if ('id' in stallToSave && stallToSave.id) {
+    let updatedStalls: Stall[];
+    let isNew = false;
+    if ('id' in stallToSave && stallToSave.id && stalls.some(s => s.id === stallToSave.id)) {
       updatedStalls = stalls.map(s => s.id === stallToSave.id ? stallToSave : s);
     } else {
-      const newStall = {
+      const newStall: Stall = {
         ...stallToSave,
-        id: new Date().toISOString(), // temp id
+        id: stallToSave.id || new Date().toISOString(),
       };
       updatedStalls = [...stalls, newStall];
+      stallToSave = newStall;
+      isNew = true;
     }
     setStalls(updatedStalls);
     handleFloorPlanUpdate?.({ stalls: updatedStalls });
+    onStallSave?.(stallToSave, { isNew, all: updatedStalls });
     setIsStallModalOpen(false);
     setCurrentStall(null);
   };
@@ -94,6 +104,8 @@ function FloorPlanWidget(props: FloorPlanWidgetProps) {
             currentStall={currentStall}
             onSaveStall={handleSaveStall}
             onDeleteStall={handleDeleteStall}
+            tooltipFields={tooltipFields}
+            dynamicFields={dynamicFields}
         />
     </div>
   );

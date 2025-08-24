@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useRef, useEffect, useState } from 'react';
@@ -23,6 +22,9 @@ interface FloorPlanCanvasProps {
   currentStall?: Partial<Stall> | null;
   onSaveStall?: (stall: Stall) => void;
   onDeleteStall?: (stallId: string) => void;
+  // updated props
+  tooltipFields?: Array<{ id: string; label?: string; }>; // controls which fields are shown on hover tooltip
+  dynamicFields?: Array<{ id: string; label: string; type?: 'text' | 'number' | 'textarea'; required?: boolean; placeholder?: string; }>; // passed to StallModal
 }
 
 export default function FloorPlanCanvas({
@@ -38,6 +40,12 @@ export default function FloorPlanCanvas({
   currentStall,
   onSaveStall,
   onDeleteStall,
+  tooltipFields = [
+    { id: 'number', label: 'Stall' },
+    { id: 'name', label: 'Name' },
+    { id: 'category', label: 'Category' }
+  ],
+  dynamicFields,
 }: FloorPlanCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -134,26 +142,34 @@ export default function FloorPlanCanvas({
       const y = (hoveredStall.y / 100) * imageHeight;
       const tooltipY = y - (PIN_SIZE / transform.scale) * 2.5;
       
-      const lines = [
-        `Stall: ${hoveredStall.number}`,
-        `Name: ${hoveredStall.name}`,
-        `Category: ${hoveredStall.category}`
-      ];
+      let rawLines = tooltipFields.map(f => {
+        const val = (hoveredStall as any)[f.id];
+        if (val === undefined || val === null || val === '') return null;
+        if (f.label === undefined || f.label === '') return String(val);
+        return `${f.label}: ${val}`;
+      }).filter(Boolean) as string[];
+
+      // Fallback: if dynamic fields provided no values, show basic stall info so tooltip isn't empty
+      if (!rawLines.length) {
+        ['number','name','category'].forEach(k => {
+          const v = (hoveredStall as any)[k];
+            if (v !== undefined && v !== null && v !== '') rawLines.push(String(v));
+        });
+      }
+      if (!rawLines.length) rawLines = ['Stall'];
       
       ctx.font = `500 ${14 / transform.scale}px Inter`;
-      const textMetrics = lines.map(line => ctx.measureText(line));
+      const lineHeight = 24 / transform.scale; // increased from 18 for more spacing
+      const textMetrics = rawLines.map(line => ctx.measureText(line));
       const tooltipWidth = Math.max(...textMetrics.map(m => m.width)) + 20 / transform.scale;
-      const lineHeight = 18 / transform.scale;
-      const tooltipHeight = (lines.length * lineHeight) + 10 / transform.scale;
+      const tooltipHeight = (rawLines.length * lineHeight) + 10 / transform.scale;
       let tooltipX = x - tooltipWidth / 2;
 
-      // prevent tooltip from going off-screen
       if(imageRef.current) {
         if(tooltipX < 0) tooltipX = 5 / transform.scale;
         if(tooltipX + tooltipWidth > imageRef.current.naturalWidth) tooltipX = imageRef.current.naturalWidth - tooltipWidth - 5 / transform.scale;
       }
       
-      // Draw tooltip background
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
       ctx.lineWidth = 1 / transform.scale;
@@ -162,12 +178,12 @@ export default function FloorPlanCanvas({
       ctx.fill();
       ctx.stroke();
 
-      // Draw tooltip text
       ctx.fillStyle = 'white';
-      ctx.textAlign = 'left';
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      lines.forEach((line, index) => {
-        ctx.fillText(line, tooltipX + 10 / transform.scale, tooltipY + (lineHeight * (index + 0.5)) + 5 / transform.scale);
+      const centerX = tooltipX + tooltipWidth / 2;
+      rawLines.forEach((line, index) => {
+        ctx.fillText(line, centerX, tooltipY + (lineHeight * (index + 0.5)) + 5 / transform.scale);
       });
     }
   
@@ -382,6 +398,7 @@ export default function FloorPlanCanvas({
           onDelete={onDeleteStall}
           allStalls={stalls}
           portalContainer={containerRef.current}
+          dynamicFields={dynamicFields}
         />
       )}
     </div>

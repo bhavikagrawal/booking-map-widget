@@ -8,6 +8,9 @@ export interface Stall {
   segment: string;
   contact?: string;
   image?: string;
+  description?: string; // optional longer description
+  // Allow widget integrators to attach arbitrary additional fields (e.g. price, capacity)
+  [key: string]: any;
 }
 
 export interface ExhibitionData {
