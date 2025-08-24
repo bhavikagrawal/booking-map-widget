@@ -1,91 +1,169 @@
-# Exhibition Widget
+# Studio Floor Plan Widget
 
-Embeddable widget version of the exhibition floor plan tool.
+This document provides instructions on how to embed and use the Studio Floor Plan Widget in your web application.
 
-## Build
-
-Install deps (once):
-
-```bash
-pnpm install # or npm install / yarn
-```
-
-Build the widget bundles (ESM, CJS, IIFE + d.ts):
-
-```bash
-pnpm build:widget
-```
-
-Outputs go to `dist/widget`:
-
-- `index.esm.js`
-- `index.cjs`
-- `index.global.js` (IIFE exposing `window.ExhibitionWidget`)
-- `index.d.ts`
-
-## Usage (React / bundler)
-
-```tsx
-import { ExhibitionWidget, InMemoryAdapter } from 'dist/widget/index.esm.js';
-
-const adapter = new InMemoryAdapter({
-  event123: { name: 'My Expo', floorPlanUrl: 'floor.png', stalls: {} }
-});
-
-<ExhibitionWidget mode="organizer" eventId="event123" adapter={adapter} />
-```
-
-## Usage (Script tag)
+## Quick Start
 
 ```html
-<script src="/dist/widget/index.global.js"></script>
+<div id="studio-floorplan-container"></div>
+<script src="/widget/studio-floorplan-widget.js"></script>
 <script>
-  const adapter = new ExhibitionWidget.InMemoryAdapter({
-    event1: { name: 'Sample', floorPlanUrl: 'https://placehold.co/1200x800.png', stalls: {} }
+  StudioFloorPlan.init({
+    clientId: 'your-client-id',
+    containerId: 'studio-floorplan-container',
+    viewType: 'customer',
+    floorPlanData: { floorPlanUrl: 'https://example.com/floor.png', stalls: [] },
+    handleSelectionChange: (stall) => console.log('Selected', stall)
   });
-  ExhibitionWidget.mount('#mount', { mode: 'visitor', eventId: 'event1', adapter });
 </script>
-<div id="mount"></div>
 ```
 
-## Auto-init via data attribute
+## Embedding the Widget (Detailed)
 
-Provide a global adapter `window.__exhibitionAdapter` then add:
+1. **Include the script tag** – host or copy the built file:
+   ```html
+   <script src="/widget/studio-floorplan-widget.js"></script>
+   ```
+2. **Add the container element**:
+   ```html
+   <div id="studio-floorplan-container"></div>
+   ```
+3. **Initialize**:
+   ```js
+   StudioFloorPlan.init({
+     clientId: 'your-client-id',
+     containerId: 'studio-floorplan-container',
+     viewType: 'organizer', // or 'customer'
+     floorPlanData: {
+       floorPlanUrl: 'https://example.com/floor-plan.png',
+       stalls: []
+     },
+     handleFloorPlanUpdate: (data) => {
+       console.log('Floor plan updated:', data);
+     },
+     handleSelectionChange: (selection) => {
+       console.log('Stall selected:', selection);
+     }
+   });
+   ```
 
-```html
-<div data-exhibition-widget data-mode="visitor" data-event-id="event1"></div>
-```
+## Configuration Options
 
-All elements with `data-exhibition-widget` will auto-mount.
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `clientId` | `string` | Yes | Your unique client identifier (for multi-tenant usage / analytics tagging). |
+| `containerId` | `string` | No | DOM element id to mount into. Defaults to `studio-floorplan-container`. |
+| `viewType` | `'organizer' | 'customer'` | Yes | Organizer mode enables adding/editing/deleting stalls; customer is read-only & selection only. |
+| `floorPlanData` | `{ floorPlanUrl: string; stalls: Stall[]; }` | No | Initial floor plan image URL + stall markers. Can be updated externally by re‑initializing (future direct update API TBD). |
+| `dimensions` | `{ width: number; height: number }` | No | Fixed pixel dimensions; if omitted the container sizing governs canvas layout. |
+| `interactive` | `boolean` | No | Toggle interactivity (zoom/pan & organizer edits). Default `true`. |
+| `theme` | `'light' | 'dark'` | No | Base color theme. Currently light/dark toggles class behavior for future styling. |
+| `handleFloorPlanUpdate` | `(data: { stalls: Stall[] }) => void` | No | Called after user adds/edits/deletes stalls (organizer mode). Includes full updated stall array. |
+| `handleSelectionChange` | `(selection: Stall | null) => void` | No | Called whenever a stall is clicked / selected. Null when deselected (not currently emitted on blank click). |
 
-## Adapter Interface
+> Note: Passing a new `floorPlanData.stalls` array in a subsequent `init` call will replace what the widget shows. A direct imperative update API may be added later.
+
+## TypeScript Definitions
 
 ```ts
-interface ExhibitionAdapter {
-  load(eventId: string): Promise<ExhibitionData>;
-  createStall(eventId: string, partial: Omit<Stall, 'id'>): Promise<Stall>;
-  updateStall(eventId: string, stall: Stall): Promise<Stall>;
-  deleteStall(eventId: string, stallId: string): Promise<void>;
-  updateFloorplan?(eventId: string, file: File): Promise<string>; // returns new URL
+export type Stall = {
+  id: string;
+  number: string;
+  name: string;
+  category: string;
+  segment: string;
+  x: number; // percentage (0-100 across image width)
+  y: number; // percentage (0-100 across image height)
+  image?: string; // optional data URL / remote preview
+  contact?: string; // optional contact info
+};
+
+export interface FloorPlanWidgetProps {
+  clientId: string;
+  containerId?: string;
+  viewType: 'organizer' | 'customer';
+  floorPlanData?: {
+    floorPlanUrl: string;
+    stalls: Stall[];
+  };
+  dimensions?: { width: number; height: number };
+  interactive?: boolean;
+  theme?: 'light' | 'dark';
+  handleFloorPlanUpdate?: (data: { stalls: Stall[] }) => void;
+  handleSelectionChange?: (selection: Stall | null) => void;
 }
 ```
 
-Implement this interface to persist to your own backend.
+## Styling / CSS
 
-## Development Demo
+The bundle inlines the project Tailwind-generated utility classes via the global import (`globals.css`). This allows the zoom controls & dialogs to render styled without an extra stylesheet. If you prefer a slimmer JS bundle and separate CSS:
 
-Run dev server:
+1. Extract the CSS: build a standalone CSS output (e.g. `npm run build:widget:css`).
+2. Remove the `import '@/app/globals.css'` line from `src/widget/floor-plan.tsx` and rebuild.
+3. Include `<link rel="stylesheet" href="/widget/widget.css" />` in your host page **before** the widget script.
 
-```bash
-pnpm dev
+## Organizer vs Customer Mode
+
+| Feature | Organizer | Customer |
+|---------|-----------|----------|
+| Select stall | Yes | Yes |
+| Add new stall (click empty space) | Yes | No |
+| Edit / Delete stall (modal) | Yes | No |
+| Selection callback | Yes | Yes |
+| Update callback (after save/delete) | Yes | No |
+
+## Example: Dual Tabs (Customer + Organizer)
+
+```html
+<div class="tabs">
+  <button data-tab="customer" class="active">Customer</button>
+  <button data-tab="organizer">Organizer</button>
+</div>
+<div id="panel-customer"><div id="studio-floorplan-customer"></div></div>
+<div id="panel-organizer" style="display:none"><div id="studio-floorplan-organizer"></div></div>
+<script src="/widget/studio-floorplan-widget.js"></script>
+<script>
+  const base = { clientId:'demo', dimensions:{width:800,height:600} };
+  let stalls = [];
+  const customerCfg = { ...base, containerId:'studio-floorplan-customer', viewType:'customer', floorPlanData:{ floorPlanUrl:'/img/plan.png', stalls } };
+  const organizerCfg = { ...base, containerId:'studio-floorplan-organizer', viewType:'organizer', floorPlanData:{ floorPlanUrl:'/img/plan.png', stalls }, handleFloorPlanUpdate:(d)=>{ stalls = d.stalls; } };
+  let mounted = { customer:false, organizer:false };
+  function mount(type){
+    if(!mounted[type]){ StudioFloorPlan.init(type==='customer'?customerCfg:organizerCfg); mounted[type]=true; }
+  }
+  document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{
+    const target = btn.dataset.tab;
+    document.querySelectorAll('[data-tab]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-customer').style.display = target==='customer'?'block':'none';
+    document.getElementById('panel-organizer').style.display = target==='organizer'?'block':'none';
+    mount(target);
+  }));
+  mount('customer');
+</script>
 ```
 
-Open: `http://localhost:9002/widget-demo.html`
+## Build Process
 
-(Uses Vite-like module resolution from Next dev for the TS module; for production embed the built files.)
+Build the widget:
+```bash
+npm run build:floor-plan-widget
+```
+Output: `public/widget/studio-floorplan-widget.js`.
 
-## TODO / Next Steps
-- Extract styling to isolated CSS (optional Shadow DOM)
-- Add REST adapter example
-- Add messaging bridge for iframe embedding
-- Provide theming tokens
+## Global Exposure
+
+The script registers a global `StudioFloorPlan` UMD library with an `init(props: FloorPlanWidgetProps)` method. Use `window.StudioFloorPlan` if TypeScript complains about the global symbol.
+
+## Troubleshooting
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `StudioFloorPlan is not defined` | Script path wrong or blocked | Use absolute `/widget/studio-floorplan-widget.js`, check Network 200. |
+| No styles (unstyled buttons/modals) | Global CSS not bundled | Ensure `import '@/app/globals.css'` is present, or add separate `<link>` to extracted CSS. |
+| Image not loading | CORS or bad URL | Check console/network; ensure proper hosting & CORS headers. |
+| Pins misaligned after resize | Container size changed post-mount | Trigger a re-initialization or expose a future `resize()` API (planned). |
+
+## License / Attribution
+
+Internal project component; adapt licensing as needed.
