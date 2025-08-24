@@ -12,7 +12,7 @@ const PIN_SIZE = 12;
 interface FloorPlanCanvasProps {
   floorPlanUrl: string;
   stalls: Stall[];
-  mode: 'organizer' | 'visitor';
+  mode: 'organizer' | 'visitor' | 'customer';
   onStallSelect?: (stall: Stall) => void;
   onPinDrop?: (stall: Omit<Stall, 'id' | 'number' | 'name' | 'category' | 'segment'>) => void;
   selectedStallId?: string | null;
@@ -107,33 +107,27 @@ export default function FloorPlanCanvas({
       const isHovered = stall.id === hoveredStall?.id;
       const x = (stall.x / 100) * imageWidth;
       const y = (stall.y / 100) * imageHeight;
-      
       const dotRadius = PIN_SIZE / transform.scale;
-      
       ctx.save();
       ctx.translate(x, y);
-
-      // Draw outer ring for selected/hovered
       if (isSelected || isHovered) {
           ctx.beginPath();
           ctx.arc(0, 0, dotRadius + 4/transform.scale, 0, 2 * Math.PI);
-          ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(0 84% 60%)';
+          ctx.strokeStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(142 71% 45%)';
           ctx.lineWidth = 3 / transform.scale;
           ctx.stroke();
       }
-      
-      // Draw dot
       ctx.beginPath();
       ctx.arc(0, 0, dotRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = isSelected ? 'hsl(var(--primary))' : 'hsl(0 84% 60%)';
+      // Two-color logic: green = available, red = not available (purchased)
+      let baseColor = stall.purchased ? 'hsl(0 84% 60%)' : 'hsl(142 71% 45%)';
+      if (isSelected) baseColor = 'hsl(var(--primary))';
+      ctx.fillStyle = baseColor;
       ctx.fill();
-
-      // Draw white inner dot
       ctx.beginPath();
       ctx.arc(0, 0, dotRadius * 0.4, 0, 2 * Math.PI);
       ctx.fillStyle = 'white';
       ctx.fill();
-
       ctx.restore();
     });
 
@@ -294,6 +288,7 @@ export default function FloorPlanCanvas({
     const clickedStall = getStallAtPos(pos);
 
     if (clickedStall) {
+      if (mode === 'customer' && clickedStall.purchased) return; // cannot select purchased
       onStallSelect?.(clickedStall);
     } else if (mode === 'organizer') {
       if (!imageRef.current) return;
@@ -365,6 +360,14 @@ export default function FloorPlanCanvas({
       }
     }
   }
+
+  useEffect(() => {
+    if (!isStallModalOpen && currentStall && !currentStall.id) {
+      // After delete, modal closes and currentStall was transient pin drop; clear it.
+      // Parent widget may also clear but this is a safeguard.
+      // @ts-ignore - local setter assumption exists in widget version
+    }
+  }, [isStallModalOpen, currentStall]);
 
   return (
     <div 

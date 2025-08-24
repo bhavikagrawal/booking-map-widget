@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Loader2, Building2 } from 'lucide-react';
+import { LayoutDashboard, Users, Loader2, Building2, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import OrganizerView from '@/components/organizer-view';
 import VisitorView from '@/components/visitor-view';
-import type { ExhibitionData } from '@/lib/types';
+import type { ExhibitionData, Stall } from '@/lib/types';
 import { Toaster } from '@/components/ui/toaster';
+import FloorPlanCanvas from '@/components/floor-plan-canvas';
 
 const defaultExhibitionData: ExhibitionData = {
     name: "Tech & Art Expo",
@@ -22,9 +23,10 @@ const defaultExhibitionData: ExhibitionData = {
 };
 
 export default function Home() {
-    const [view, setView] = useState<'organizer' | 'visitor'>('organizer');
+    const [view, setView] = useState<'organizer' | 'visitor' | 'customer'>('organizer');
     const [exhibitionData, setExhibitionData] = useState<ExhibitionData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [selectedForPurchase, setSelectedForPurchase] = useState<Stall | null>(null);
 
     useEffect(() => {
         // Simulate fetching data
@@ -36,6 +38,13 @@ export default function Home() {
 
     const updateExhibitionData = (newData: ExhibitionData) => {
         setExhibitionData(newData);
+    };
+
+    const markPurchased = (stall: Stall) => {
+      if (!exhibitionData) return;
+      const updated: ExhibitionData = { ...exhibitionData, stalls: { ...exhibitionData.stalls, [stall.id]: { ...stall, purchased: true } } };
+      setExhibitionData(updated);
+      setSelectedForPurchase(null);
     };
 
     if (loading) {
@@ -68,6 +77,15 @@ export default function Home() {
                             Organizer
                         </Button>
                         <Button
+                            onClick={() => setView('customer')}
+                            variant={view === 'customer' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="rounded-full"
+                        >
+                            <ShoppingCart className="w-4 h-4 mr-2" />
+                            Customer
+                        </Button>
+                        <Button
                             onClick={() => setView('visitor')}
                             variant={view === 'visitor' ? 'default' : 'ghost'}
                             size="sm"
@@ -84,8 +102,28 @@ export default function Home() {
                 {exhibitionData && (
                     view === 'organizer' ? (
                         <OrganizerView exhibitionData={exhibitionData} setExhibitionData={updateExhibitionData} />
-                    ) : (
+                    ) : view === 'visitor' ? (
                         <VisitorView exhibitionData={exhibitionData} />
+                    ) : (
+                      <div className="space-y-4">
+                        <h2 className="text-3xl font-bold tracking-tight">Select a Stall to Purchase</h2>
+                        <FloorPlanCanvas
+                          floorPlanUrl={exhibitionData.floorPlanUrl}
+                          stalls={Object.values(exhibitionData.stalls)}
+                          mode="customer"
+                          onStallSelect={(s) => setSelectedForPurchase(s)}
+                          selectedStallId={selectedForPurchase?.id}
+                        />
+                        {selectedForPurchase && !selectedForPurchase.purchased && (
+                          <div className="flex gap-2">
+                            <Button onClick={() => markPurchased(selectedForPurchase)} className="bg-green-600 hover:bg-green-700 text-white">Confirm Purchase ({selectedForPurchase.number})</Button>
+                            <Button variant="outline" onClick={() => setSelectedForPurchase(null)}>Cancel</Button>
+                          </div>
+                        )}
+                        {selectedForPurchase?.purchased && (
+                          <p className="text-sm text-muted-foreground">Stall already purchased.</p>
+                        )}
+                      </div>
                     )
                 )}
             </main>

@@ -113,6 +113,7 @@ export function StallModal({ isOpen, setIsOpen, stall, onSave, onDelete, allStal
     if (editedStall?.id) {
         onDelete(editedStall.id);
         setDeleteConfirmOpen(false);
+        setEditedStall(null);
     }
   }
 

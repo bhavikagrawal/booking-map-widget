@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -13,9 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 interface OrganizerViewProps {
   exhibitionData: ExhibitionData;
   setExhibitionData: (data: ExhibitionData) => void;
+  onStallSelect?: (stall: Stall) => void;
 }
 
-export default function OrganizerView({ exhibitionData, setExhibitionData }: OrganizerViewProps) {
+export default function OrganizerView({ exhibitionData, setExhibitionData, onStallSelect }: OrganizerViewProps) {
   const [isStallModalOpen, setIsStallModalOpen] = useState(false);
   const [currentStall, setCurrentStall] = useState<Partial<Stall> | null>(null);
 
@@ -45,6 +45,7 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
   const handleStallSelect = (stall: Stall) => {
     setCurrentStall(stall);
     setIsStallModalOpen(true);
+    onStallSelect?.(stall);
   };
 
   const handleSaveStall = (stallToSave: Stall) => {
@@ -111,4 +112,3 @@ export default function OrganizerView({ exhibitionData, setExhibitionData }: Org
   );
 }
 
-    

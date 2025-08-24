@@ -9,6 +9,7 @@ export interface Stall {
   contact?: string;
   image?: string;
   description?: string; // optional longer description
+  purchased?: boolean; // indicates if stall has been purchased
   // Allow widget integrators to attach arbitrary additional fields (e.g. price, capacity)
   [key: string]: any;
 }
